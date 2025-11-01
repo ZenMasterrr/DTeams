@@ -1,0 +1,27 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Zap {
+  id          String   @id @default(uuid())
+  triggerType String
+  chain       String
+  token       String
+  price       Float?
+  webhookUrl  String?
+  actionType  String
+  actionData  Json
+  txHash      String
+  status      String   @default("pending")
+  error       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

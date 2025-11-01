@@ -1,18 +1,46 @@
 "use client";
+"use client";
 import { Appbar } from "@/components/Appbar";
 import { CheckFeature } from "@/components/CheckFeature";
-import { Input } from "@/components/Input";
 import { PrimaryButton } from "@/components/buttons/PrimaryButton";
-import axios from "axios";
-import { useState } from "react";
-import { BACKEND_URL } from "../config";
 import { useRouter } from "next/navigation";
+import { BACKEND_URL } from "../config";
+import axios from "axios";
+
+interface CustomWindow extends Window {
+    ethereum?: any;
+}
+
+declare const window: CustomWindow;
 
 export default function() {
     const router = useRouter();
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+
+    const handleSignup = async () => {
+        // Clear any stale session token before starting a new signup
+        localStorage.removeItem("token");
+
+        if (window.ethereum) {
+            try {
+                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                const address = accounts[0];
+                
+                const response = await axios.post(`${BACKEND_URL}/api/v1/auth/signup`, {
+                    address
+                });
+
+                const token = response.data.token;
+                localStorage.setItem("token", token);
+
+                router.push("/dashboard");
+            } catch (error) {
+                console.error("Error during signup:", error);
+                alert("Signup failed. Please try again.");
+            }
+        } else {
+            alert("Please install MetaMask!");
+        }
+    };
 
     return <div> 
         <Appbar />
@@ -20,7 +48,7 @@ export default function() {
             <div className="flex pt-8 max-w-4xl">
                 <div className="flex-1 pt-20 px-4">
                     <div className="font-semibold text-3xl pb-4">
-                    Join millions worldwide who automate their work using Zapier.
+                    Join millions worldwide who automate their work using Dteams.
                     </div>
                     <div className="pb-6 pt-4">
                         <CheckFeature label={"Easy setup, no coding required"} />
@@ -29,28 +57,10 @@ export default function() {
                         <CheckFeature label={"Free forever for core features"} />
                     </div>
                     <CheckFeature label={"14-day trial of premium features & apps"} />
-
                 </div>
-                <div className="flex-1 pt-6 pb-6 mt-12 px-4 border rounded">
-                    <Input label={"Name"} onChange={e => {
-                        setName(e.target.value)
-                    }} type="text" placeholder="Your name"></Input>
-                    <Input onChange={e => {
-                        setEmail(e.target.value)
-                    }} label={"Email"} type="text" placeholder="Your Email"></Input>
-                    <Input onChange={e => {
-                        setPassword(e.target.value)
-                    }} label={"Password"} type="password" placeholder="Password"></Input>
-
+                <div className="flex-1 pt-6 pb-6 mt-12 px-4 border rounded flex flex-col justify-center items-center">
                     <div className="pt-4">
-                        <PrimaryButton onClick={async () => {
-                            const res = await axios.post(`${BACKEND_URL}/api/v1/user/signup`, {
-                                username: email,
-                                password,
-                                name
-                            });
-                            router.push("/login");
-                        }} size="big">Get started free</PrimaryButton>
+                        <PrimaryButton onClick={handleSignup} size="big">Connect Wallet & Get Started</PrimaryButton>
                     </div>
                 </div>
             </div>
