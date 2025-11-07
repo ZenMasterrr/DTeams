@@ -1,7 +1,14 @@
+// Polyfills
+import 'core-js/features/array/find';
+import 'core-js/features/array/includes';
+import 'core-js/features/number/is-nan';
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "./error-handler"; // Import the error handler
 import { Providers } from "./providers";
+import { Web3Provider } from "@/components/Web3Provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,10 +22,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.className} min-h-screen bg-gray-50`}>
         <Providers>
-          {children}
+          <Web3Provider>
+            <main className="container mx-auto p-4">
+              {children}
+            </main>
+          </Web3Provider>
         </Providers>
       </body>
     </html>

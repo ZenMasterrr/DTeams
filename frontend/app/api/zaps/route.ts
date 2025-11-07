@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { storeMockZap } from '../test-zap/[id]/route';
 
 // Get the hooks service URL from environment variables or use default
 const HOOKS_URL = process.env.HOOKS_URL || 'http://localhost:3002';
@@ -32,15 +31,8 @@ function getMockResponse(body: any) {
     updatedAt: new Date().toISOString()
   };
   
-  // Store the zap in our mock database
-  try {
-    // Import dynamically to avoid circular dependencies
-    import('../test-zap/[id]/route').then(({ storeMockZap }) => {
-      storeMockZap(mockZap);
-    });
-  } catch (error) {
-    console.error('Failed to store mock zap:', error);
-  }
+  // Store the zap in our mock database (if needed, can be added later)
+  // Note: Mock zap storage can be implemented here if needed for testing
   
   return {
     success: true,

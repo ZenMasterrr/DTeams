@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
 import Link from 'next/link';
-import { Plus, RefreshCw, Zap } from 'lucide-react';
+import { Plus, RefreshCw, Zap, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { toast } from 'sonner';
 
@@ -159,11 +159,18 @@ export function ZapList({ onLoadingChange, onError, onZapCreated }: ZapListProps
     setTestingZap(zap.id);
     
     try {
+      // Check if this is a mock zap (stored in localStorage)
+      const isMockZap = zap.id.startsWith('zap-') || zap.id.startsWith('mock-zap-');
+      
+      // For mock zaps, send the zap data in the request body
+      const requestBody = isMockZap ? { zap } : undefined;
+      
       const response = await fetch(zap.testUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: requestBody ? JSON.stringify(requestBody) : undefined,
       });
 
       const result = await response.json();
@@ -179,6 +186,35 @@ export function ZapList({ onLoadingChange, onError, onZapCreated }: ZapListProps
       toast.error(`Failed to test zap: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setTestingZap(null);
+    }
+  };
+
+  const deleteZap = async (zapId: string, zapName: string) => {
+    // Confirm deletion
+    if (!confirm(`Are you sure you want to delete "${zapName}"?`)) {
+      return;
+    }
+
+    try {
+      // Remove from localStorage
+      const savedZaps = localStorage.getItem('mockZaps');
+      if (savedZaps) {
+        const zapsObj = JSON.parse(savedZaps);
+        delete zapsObj[zapId];
+        localStorage.setItem('mockZaps', JSON.stringify(zapsObj));
+        
+        // Update state
+        setZaps(Object.values(zapsObj) as Zap[]);
+        
+        toast.success(`Zap "${zapName}" deleted successfully`);
+      }
+      
+      // In a real app, you would also delete from the backend API
+      // await fetch(`/api/zaps/${zapId}`, { method: 'DELETE' });
+      
+    } catch (error) {
+      console.error('Error deleting zap:', error);
+      toast.error(`Failed to delete zap: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -244,25 +280,54 @@ export function ZapList({ onLoadingChange, onError, onZapCreated }: ZapListProps
               <div className="mb-4">
                 <h4 className="font-medium mb-1">Actions:</h4>
                 <ul className="text-sm text-gray-600 space-y-1">
-                  {zap.actions?.map((action, i) => (
-                    <li key={i}>
-                      • {action.type}: {action.config?.to || action.config?.url || 'N/A'}
-                    </li>
-                  )) || <li>No actions configured</li>}
+                  {zap.actions?.map((action, i) => {
+                    // Determine what to display based on action type
+                    let displayValue = 'N/A';
+                    
+                    if (action.type === 'email') {
+                      displayValue = action.config?.to || 'N/A';
+                    } else if (action.type === 'webhook') {
+                      displayValue = action.config?.url || 'N/A';
+                    } else if (action.type === 'sheets') {
+                      const sheetName = action.config?.sheetName || 'Sheet1';
+                      const spreadsheetId = action.config?.spreadsheetId;
+                      displayValue = spreadsheetId 
+                        ? `${sheetName} (${spreadsheetId.substring(0, 8)}...)`
+                        : sheetName;
+                    } else if (action.type === 'calendar') {
+                      displayValue = action.config?.eventTitle || 'Calendar Event';
+                    }
+                    
+                    return (
+                      <li key={i}>
+                        • {action.type}: {displayValue}
+                      </li>
+                    );
+                  }) || <li>No actions configured</li>}
                 </ul>
               </div>
               
-              <div className="flex justify-between items-center pt-2 border-t">
+              <div className="flex flex-col space-y-2 pt-2 border-t">
                 <span className="text-xs text-gray-500">
                   Created: {new Date(zap.createdAt).toLocaleDateString()}
                 </span>
-                <Button 
-                  size="sm" 
-                  onClick={() => testZap(zap)}
-                  disabled={testingZap === zap.id}
-                >
-                  {testingZap === zap.id ? 'Testing...' : 'Test'}
-                </Button>
+                <div className="flex space-x-2">
+                  <Button 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => testZap(zap)}
+                    disabled={testingZap === zap.id}
+                  >
+                    {testingZap === zap.id ? 'Testing...' : 'Test'}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="destructive"
+                    onClick={() => deleteZap(zap.id, zap.name)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
             </Card>

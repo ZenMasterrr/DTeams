@@ -1,3 +1,11 @@
+// Load environment variables before importing anything else
+import dotenv from 'dotenv';
+import { resolve } from 'path';
+
+// Load .env files from multiple locations
+dotenv.config({ path: resolve(__dirname, '.env') });
+dotenv.config({ path: resolve(__dirname, 'hooks', '.env'), override: false });
+
 import { NextRequest } from 'next/server';
 import { POST } from './frontend/app/api/test-zap/[id]/route';
 import { saveMockZap } from './frontend/lib/mockZapUtils';

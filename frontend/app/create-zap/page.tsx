@@ -1,7 +1,8 @@
 "use client";
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ethers, BrowserProvider } from 'ethers';
+import { ethers, BrowserProvider, Contract } from 'ethers';
+import { toast } from 'sonner';
 import { Appbar } from '@/components/Appbar';
 import EmailActionForm from '@/components/EmailActionForm';
 import WebhookTrigger from '@/components/WebhookTrigger';
@@ -42,6 +43,20 @@ declare const window: CustomWindow;
 const ZAP_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ZAP_CONTRACT_ADDRESS || "";
 const ZAP_ORACLE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ORACLE_CONTRACT_ADDRESS || "";
 
+// Initialize provider and signer
+const getProvider = () => {
+  if (typeof window !== 'undefined' && window.ethereum) {
+    return new BrowserProvider(window.ethereum);
+  }
+  return null;
+};
+
+const getSigner = async () => {
+  const provider = getProvider();
+  if (!provider) return null;
+  return await provider.getSigner();
+};
+
 type TriggerType = 'price' | 'webhook' | 'google' | null;
 
 export default function CreateZap() {
@@ -70,7 +85,7 @@ export default function CreateZap() {
   };
 
   const handleAddAction = (action: ActionData) => {
-    console.log('New action added:', action);
+    console.log('New action added:', JSON.stringify(action, null, 2));
     setActions([...actions, action]);
     setShowEmailForm(false);
   };
@@ -82,19 +97,159 @@ export default function CreateZap() {
   };
 
   const handleCreateZap = async () => {
-    if (!triggerData) {
+    // Check if we have a trigger (either triggerData or googleWorkflow)
+    if (!triggerData && !googleWorkflow) {
       console.error('Please set up your trigger first.'); // Use console.error for alerts
+      toast.error('Please configure a trigger first');
       return;
     }
     
-    if (actions.length === 0) {
+    // For Google workflows, the actions are in the workflow steps
+    // For regular triggers, check if actions are added
+    if (!googleWorkflow && actions.length === 0) {
       console.error('Please add at least one action.'); // Use console.error for alerts
+      toast.error('Please add at least one action');
+      return;
+    }
+    
+    // For Google workflows, validate that there are steps
+    if (googleWorkflow && (!googleWorkflow.steps || googleWorkflow.steps.length === 0)) {
+      console.error('Please configure at least one workflow step.'); // Use console.error for alerts
+      toast.error('Please configure at least one workflow step');
       return;
     }
     
     setIsLoading(true);
     
     try {
+      // Handle Google Workflow separately
+      if (googleWorkflow) {
+        // For Google workflows, save directly to backend without blockchain
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No authentication token found. Please log in again.');
+        }
+
+        const backendData = {
+          trigger: {
+            id: 'google_workflow',
+            config: {
+              type: 'google_workflow',
+              workflow: googleWorkflow
+            }
+          },
+          actions: googleWorkflow.steps.filter((step: any) => step.type !== 'trigger').map((step: any) => ({
+            id: step.type,
+            type: step.type,
+            config: step.config
+          })),
+          status: 'pending'
+        };
+
+        console.log('Creating Google Workflow Zap:', JSON.stringify(backendData, null, 2));
+
+        // Generate a unique ID for the new zap
+        const zapId = `zap-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        const zapName = googleWorkflow.name || `Google Workflow: ${googleWorkflow.steps.map((s: any) => s.title).join(' → ')}`;
+        
+        // Create a test URL for the new zap
+        const testUrl = `/api/test-zap/${zapId}`;
+        
+        // Prepare the full zap data for localStorage
+        const newZap = {
+          id: zapId,
+          name: zapName,
+          status: 'active',
+          trigger: {
+            type: 'google_workflow',
+            workflow: googleWorkflow
+          },
+          actions: googleWorkflow.steps.filter((step: any) => step.type !== 'trigger').map((step: any) => ({
+            type: step.type,
+            config: step.config
+          })),
+          testUrl,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        
+        // Save the new zap to localStorage
+        try {
+          const savedZaps = JSON.parse(localStorage.getItem('mockZaps') || '{}');
+          savedZaps[zapId] = newZap;
+          localStorage.setItem('mockZaps', JSON.stringify(savedZaps));
+          window.dispatchEvent(new Event('storage'));
+          console.log('Saved Google Workflow zap to localStorage:', JSON.stringify(newZap, null, 2));
+          
+          // Auto-register with backend for automatic monitoring
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3002';
+          try {
+            await fetch(`${backendUrl}/api/v1/zap/register`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: zapId,
+                trigger: newZap.trigger,
+                actions: newZap.actions,
+                status: 'active'
+              })
+            });
+            console.log('✅ Auto-registered zap for monitoring:', zapId);
+          } catch (regError) {
+            console.warn('⚠️ Could not auto-register zap (backend may be offline):', regError);
+          }
+        } catch (error) {
+          console.error('Failed to save zap to localStorage:', error);
+        }
+        
+        // Send to backend
+        const response = await fetch('/api/zaps', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(backendData)
+        });
+        
+        const responseText = await response.text();
+        let result;
+        
+        try {
+          result = responseText ? JSON.parse(responseText) : {};
+        } catch (e) {
+          console.error('Failed to parse backend response:', e);
+          throw new Error(`Invalid response from server: ${responseText.substring(0, 200)}`);
+        }
+        
+        if (!response.ok) {
+          console.error('Backend error:', result);
+          console.log('Zap saved to localStorage, but backend save failed. Continuing...');
+          return { ...newZap, id: zapId };
+        }
+        
+        console.log('Google Workflow Zap saved to backend:', JSON.stringify(result, null, 2));
+        console.log('Google Workflow Zap created successfully!');
+        
+        // Store the newly created zap ID
+        if (result?.id) {
+          setTimeout(() => {
+            localStorage.setItem('newZapId', result.id);
+          }, 100);
+        }
+        
+        // Redirect to dashboard
+        router.push('/dashboard?zap_created=true');
+        return;
+      }
+      
+      // Regular zap creation (for price/webhook triggers)
+      // Type guard: ensure triggerData is not null
+      if (!triggerData) {
+        throw new Error('Trigger data is required for regular zaps');
+      }
+      
       // Create the Zap configuration object
       const zap = {
         trigger: {
@@ -108,7 +263,7 @@ export default function CreateZap() {
         actions: [...actions] // Include all actions
       };
 
-      console.log('Creating Zap:', zap);
+      console.log('Creating Zap:', JSON.stringify(zap, null, 2));
 
       if (typeof window.ethereum === 'undefined') {
         throw new Error('Please install MetaMask to create Zaps!');
@@ -116,7 +271,7 @@ export default function CreateZap() {
 
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const zapContract = new ethers.Contract(
+      const zapContract = new Contract(
         ZAP_CONTRACT_ADDRESS,
         Zap.abi,
         signer
@@ -125,7 +280,7 @@ export default function CreateZap() {
       // Convert price to wei if it's a price-based trigger
       const priceInWei = zap.trigger.price 
         ? ethers.parseEther(zap.trigger.price.toString()) 
-        : BigInt(0); // Changed 0n to BigInt(0) for ES2015 compatibility
+        : BigInt(0);
       
       // Construct the Trigger struct
       const trigger = {
@@ -158,12 +313,32 @@ export default function CreateZap() {
       }));
 
       // Create the Zap on-chain
-      console.log('Sending transaction with:', { trigger, actions: actionStructs });
-      const tx = await zapContract.mintZap(trigger, actionStructs, { gasLimit: 2000000 });
+      const transactionData = {
+        trigger: {
+          triggerType: trigger.triggerType,
+          source: trigger.source,
+          data: '0x' + Array.from(trigger.data).map(b => b.toString(16).padStart(2, '0')).join('')
+        },
+        actions: actionStructs.map(action => ({
+          actionType: action.actionType,
+          target: action.target,
+          value: action.value.toString(),
+          data: action.data
+        })),
+        gasLimit: '2000000'
+      };
+      console.log('Sending transaction with:', JSON.stringify(transactionData, null, 2));
+      const tx = await zapContract.mintZap(trigger, actionStructs, { gasLimit: 2_000_000 });
 
       console.log('Transaction sent, waiting for confirmation...');
+      console.log('Transaction hash:', tx.hash);
       const receipt = await tx.wait();
-      console.log('Zap created successfully!', receipt);
+      console.log('Zap created successfully!', {
+        transactionHash: receipt.hash,
+        blockNumber: receipt.blockNumber.toString(),
+        gasUsed: receipt.gasUsed.toString(),
+        status: receipt.status === 1 ? 'success' : 'failed'
+      });
       
       // Prepare data for backend
       const token = localStorage.getItem('token');
@@ -245,7 +420,7 @@ export default function CreateZap() {
         // Dispatch a storage event to notify other tabs/windows
         window.dispatchEvent(new Event('storage'));
         
-        console.log('Saved new zap to localStorage:', newZap);
+        console.log('Saved new zap to localStorage:', JSON.stringify(newZap, null, 2));
       } catch (error) {
         console.error('Failed to save zap to localStorage:', error);
       }
@@ -279,7 +454,7 @@ export default function CreateZap() {
         return { ...newZap, id: zapId };
       }
       
-      console.log('Zap saved to backend:', result);
+      console.log('Zap saved to backend:', JSON.stringify(result, null, 2));
       
       // Show success message and redirect to dashboard with a success parameter
       console.log('Zap created and monitoring started successfully!');
@@ -348,8 +523,10 @@ export default function CreateZap() {
             <h2 className="text-xl font-semibold mb-4">2. Configure Google Workflow</h2>
             <GoogleWorkflowConfig 
               onComplete={(workflow) => {
-                console.log('Workflow created:', workflow);
+                console.log('Workflow created:', JSON.stringify(workflow, null, 2));
                 setGoogleWorkflow(workflow);
+                // Show success message and scroll to Create Zap button
+                toast.success('Google Workflow configured! Click "Create Zap" below to create it.');
               }}
               onBack={() => setSelectedTrigger(null)}
             />
@@ -503,77 +680,107 @@ export default function CreateZap() {
           </div>
         )}
 
-        {/* Actions Section */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">3. Add Actions</h2>
-          
-          {actions.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">No actions added yet.</p>
-              <div className="space-x-4">
-                <button
-                  onClick={() => setShowEmailForm(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                >
-                  Add Email Action
-                </button>
-                <button
-                  onClick={() => setShowWebhookForm(true)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                >
-                  Add Webhook Action
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {actions.map((action, index) => (
-                <div key={index} className="p-4 border rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-medium">
-                        {action.type === 'email' ? 'Email' : 'Webhook'} Action
-                      </h3>
-                      {action.type === 'email' && (
-                        <p className="text-sm text-gray-600">
-                          To: {(action as EmailActionData).to} | Subject: {(action as EmailActionData).subject}
-                        </p>
-                      )}
-                      {action.type === 'webhook' && (
-                        <p className="text-sm text-gray-600">URL: {(action as WebhookActionData).url}</p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => {
-                        const newActions = [...actions];
-                        newActions.splice(index, 1);
-                        setActions(newActions);
-                      }}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      Remove
-                    </button>
-                  </div>
+        {/* Actions Section - Only show for non-Google triggers */}
+        {!googleWorkflow && selectedTrigger !== 'google' && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 className="text-xl font-semibold mb-4">3. Add Actions</h2>
+            
+            {actions.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">No actions added yet.</p>
+                <div className="space-x-4">
+                  <button
+                    onClick={() => setShowEmailForm(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Add Email Action
+                  </button>
+                  <button
+                    onClick={() => setShowWebhookForm(true)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    Add Webhook Action
+                  </button>
                 </div>
-              ))}
-              
-              <div className="flex space-x-4 pt-4">
-                <button
-                  onClick={() => setShowEmailForm(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                >
-                  Add Email Action
-                </button>
-                <button
-                  onClick={() => setShowWebhookForm(true)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
-                >
-                  Add Webhook Action
-                </button>
               </div>
+            ) : (
+              <div className="space-y-4">
+                {actions.map((action, index) => (
+                  <div key={index} className="p-4 border rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="font-medium">
+                          {action.type === 'email' ? 'Email' : 'Webhook'} Action
+                        </h3>
+                        {action.type === 'email' && (
+                          <p className="text-sm text-gray-600">
+                            To: {(action as EmailActionData).to} | Subject: {(action as EmailActionData).subject}
+                          </p>
+                        )}
+                        {action.type === 'webhook' && (
+                          <p className="text-sm text-gray-600">URL: {(action as WebhookActionData).url}</p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newActions = [...actions];
+                          newActions.splice(index, 1);
+                          setActions(newActions);
+                        }}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                
+                <div className="flex space-x-4 pt-4">
+                  <button
+                    onClick={() => setShowEmailForm(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                  >
+                    Add Email Action
+                  </button>
+                  <button
+                    onClick={() => setShowWebhookForm(true)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                  >
+                    Add Webhook Action
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Google Workflow Info - Show when Google workflow is configured */}
+        {googleWorkflow && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 className="text-xl font-semibold mb-4">3. Workflow Configured ✓</h2>
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h3 className="font-medium text-green-800 mb-2">
+                {googleWorkflow.name || 'Google Workspace Workflow'}
+              </h3>
+              <p className="text-sm text-gray-600 mb-3">
+                Your workflow includes {googleWorkflow.steps?.length || 0} step(s)
+              </p>
+              <div className="space-y-2">
+                {googleWorkflow.steps?.map((step: any, index: number) => (
+                  <div key={index} className="text-sm text-gray-700 flex items-center">
+                    <span className="inline-block w-6 h-6 rounded-full bg-blue-100 text-blue-800 text-xs flex items-center justify-center mr-2">
+                      {index + 1}
+                    </span>
+                    {step.title || step.type}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                ℹ️ Google Workflows don't require blockchain interaction - they're saved directly to your account.
+              </p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Email Action Form Modal */}
         {showEmailForm && (
@@ -608,9 +815,9 @@ export default function CreateZap() {
         <div className="flex justify-end mt-6">
           <button
             onClick={handleCreateZap}
-            disabled={!((triggerData || googleWorkflow) && actions.length > 0) || isLoading}
+            disabled={!((triggerData || googleWorkflow) && (actions.length > 0 || (googleWorkflow && googleWorkflow.steps && googleWorkflow.steps.length > 0))) || isLoading}
             className={`px-6 py-3 rounded-lg font-medium text-white ${
-              (triggerData || googleWorkflow) && actions.length > 0
+              (triggerData || googleWorkflow) && (actions.length > 0 || (googleWorkflow && googleWorkflow.steps && googleWorkflow.steps.length > 0))
                 ? 'bg-green-600 hover:bg-green-700'
                 : 'bg-gray-400 cursor-not-allowed'
             } transition-colors`}

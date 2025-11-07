@@ -3,8 +3,11 @@ import { OAuth2Client } from 'google-auth-library';
 import { PrismaClient, User, Prisma } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { resolve } from 'path';
 
-dotenv.config();
+// Load environment variables from hooks/.env and parent .env
+dotenv.config({ path: resolve(__dirname, '../../../.env') }); // hooks/.env
+dotenv.config({ path: resolve(__dirname, '../../../../.env'), override: false }); // Dteams/.env
 
 const router = require('express').Router();
 const prisma = new PrismaClient();

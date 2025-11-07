@@ -368,35 +368,51 @@ export function GoogleWorkflowConfig({ onComplete, onBack }: GoogleWorkflowConfi
               <Input
                 value={step.config.eventTitle} // Now type-safe
                 onChange={(e) => handleConfigChange('eventTitle', e.target.value)}
-                placeholder="Enter event title"
+                placeholder="e.g., Meeting with Team or {{email.subject}}"
               />
+              <p className="text-xs text-gray-500 mt-1">You can use static text or reference fields from previous steps</p>
             </div>
             <div>
               <Label>Event Description</Label>
               <Textarea
                 value={step.config.eventDescription} // Now type-safe
                 onChange={(e) => handleConfigChange('eventDescription', e.target.value)}
-                placeholder="Enter event description"
+                placeholder="e.g., Event details or {{email.body}}"
               />
+              <p className="text-xs text-gray-500 mt-1">{'Use {{email.body}} to include email content'}</p>
             </div>
+            
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm font-medium text-blue-900 mb-1">📅 Date & Time Configuration</p>
+              <p className="text-xs text-gray-600">
+                Enter actual date/time values OR field names from previous steps.
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                {'Examples: "2024-11-15", "14:30", or field references like "{{sheet.date}}"'}
+              </p>
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Date Field</Label>
+                <Label>Date (YYYY-MM-DD or field reference)</Label>
                 <Input
                   value={step.config.dateField} // Now type-safe
                   onChange={(e) => handleConfigChange('dateField', e.target.value)}
-                  placeholder="date"
+                  placeholder="2024-11-15 or {{sheet.date}}"
                 />
+                <p className="text-xs text-gray-500 mt-1">Format: YYYY-MM-DD</p>
               </div>
               <div>
-                <Label>Time Field</Label>
+                <Label>Time (HH:MM or field reference)</Label>
                 <Input
                   value={step.config.timeField} // Now type-safe
                   onChange={(e) => handleConfigChange('timeField', e.target.value)}
-                  placeholder="time"
+                  placeholder="14:30 or {{sheet.time}}"
                 />
+                <p className="text-xs text-gray-500 mt-1">Format: HH:MM (24-hour)</p>
               </div>
             </div>
+            
             <div>
               <Label>Duration (minutes)</Label>
               <Input
@@ -404,7 +420,10 @@ export function GoogleWorkflowConfig({ onComplete, onBack }: GoogleWorkflowConfi
                 value={step.config.duration} // Now type-safe
                 onChange={(e) => handleConfigChange('duration', parseInt(e.target.value) || 60)}
                 placeholder="60"
+                min="15"
+                max="1440"
               />
+              <p className="text-xs text-gray-500 mt-1">How long the event will last (15-1440 minutes)</p>
             </div>
             <div className="flex items-center space-x-2">
               <Switch
@@ -412,7 +431,14 @@ export function GoogleWorkflowConfig({ onComplete, onBack }: GoogleWorkflowConfi
                 checked={step.config.sendNotifications} // Now type-safe
                 onCheckedChange={(checked: boolean) => handleConfigChange('sendNotifications', checked)}
               />
-              <Label htmlFor="send-notifications">Send notifications</Label>
+              <Label htmlFor="send-notifications">Send calendar notifications to attendees</Label>
+            </div>
+            
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p className="text-xs text-yellow-800">
+                💡 <strong>Tip:</strong> For testing, use actual date/time values like "2024-11-15" and "14:30".
+                For production workflows, reference fields from your Google Sheet or email content.
+              </p>
             </div>
           </div>
         );
@@ -696,7 +722,7 @@ export function GoogleWorkflowConfig({ onComplete, onBack }: GoogleWorkflowConfi
             onClick={handleNext}
             disabled={isNextDisabled()}
           >
-            {step < 2 ? 'Continue' : 'Create Zap'}
+            {step < 2 ? 'Continue' : 'Complete Configuration'}
           </Button>
         </div>
       </CardContent>
