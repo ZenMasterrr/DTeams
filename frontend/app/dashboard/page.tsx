@@ -69,9 +69,9 @@ export default function Dashboard() {
     if (params.get('zap_created') === 'true') {
       const zapId = params.get('zap_id');
       toast.success(`🎉 Decentralized Zap #${zapId} created successfully on blockchain!`);
-      // Refresh zap list
+      
       setRefreshKey(prev => prev + 1);
-      // Clean up URL
+      
       window.history.replaceState({}, document.title, '/dashboard');
     }
 

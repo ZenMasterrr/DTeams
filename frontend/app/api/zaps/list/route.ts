@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-/**
- * API endpoint to get all zaps from localStorage
- * This is used by the automatic trigger monitoring service
- */
 export async function GET(req: NextRequest) {
   try {
-    // Since this is a server-side API, we can't directly access localStorage
-    // But we can return a structure that tells the monitoring service
-    // to use the standard test-zap endpoint which handles localStorage zaps
-    
-    // For now, return empty array
-    // The monitoring will work by having the frontend periodically sync zaps
-    // OR we can use a different approach
     
     return NextResponse.json({
       status: 'success',

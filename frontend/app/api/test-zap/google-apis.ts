@@ -1,18 +1,14 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 
-// Initialize OAuth2 client
+
 const oauth2Client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
   process.env.GOOGLE_REDIRECT_URI
 );
 
-/**
- * Set credentials for the OAuth2 client
- * In a real implementation, you would fetch these from your database
- * where they were stored after the user authorized your app
- */
+
 export function setGoogleCredentials(accessToken: string, refreshToken?: string) {
   oauth2Client.setCredentials({
     access_token: accessToken,
@@ -20,9 +16,7 @@ export function setGoogleCredentials(accessToken: string, refreshToken?: string)
   });
 }
 
-/**
- * Add a row to Google Sheets
- */
+
 export async function addRowToSheet(
   spreadsheetId: string,
   sheetName: string,
@@ -32,7 +26,7 @@ export async function addRowToSheet(
   try {
     const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
     
-    // Determine the range - if not specified, append to the sheet
+    
     const targetRange = range || `${sheetName}!A1`;
     
     const response = await sheets.spreadsheets.values.append({
@@ -64,13 +58,11 @@ export async function addRowToSheet(
   }
 }
 
-/**
- * Create a Google Calendar event
- */
+
 export async function createCalendarEvent(
   eventTitle: string,
   eventDescription: string,
-  startDateTime: string, // ISO 8601 format: "2024-11-15T14:30:00"
+  startDateTime: string, 
   endDateTime: string,
   sendNotifications: boolean = true
 ): Promise<{ success: boolean; message: string; details?: any }> {
@@ -82,7 +74,7 @@ export async function createCalendarEvent(
       description: eventDescription,
       start: {
         dateTime: startDateTime,
-        timeZone: 'UTC', // You may want to make this configurable
+        timeZone: 'UTC', 
       },
       end: {
         dateTime: endDateTime,
@@ -123,10 +115,7 @@ export async function createCalendarEvent(
   }
 }
 
-/**
- * Search Gmail for messages matching criteria
- * This can be used for the trigger
- */
+
 export async function searchGmail(
   query: string,
   maxResults: number = 10
@@ -147,7 +136,7 @@ export async function searchGmail(
       };
     }
 
-    // Get full message details for each message
+    
     const messages = await Promise.all(
       response.data.messages.map(async (msg: any) => {
         const fullMessage = await gmail.users.messages.get({
@@ -171,16 +160,14 @@ export async function searchGmail(
   }
 }
 
-/**
- * Helper function to parse date and time strings into ISO 8601 format
- */
+
 export function parseDateTime(dateField: string, timeField: string): string {
-  // If already in ISO format, return as is
+  
   if (dateField.includes('T')) {
     return dateField;
   }
   
-  // Parse date (handles formats like "2025-11-7" or "2025-11-07")
+  
   const dateParts = dateField.split('-');
   if (dateParts.length !== 3) {
     throw new Error(`Invalid date format: ${dateField}. Expected format: YYYY-MM-DD or YYYY-M-D`);
@@ -191,7 +178,7 @@ export function parseDateTime(dateField: string, timeField: string): string {
   const day = dateParts[2].padStart(2, '0');
   const formattedDate = `${year}-${month}-${day}`;
   
-  // Parse time (handles formats like "2:15" or "14:30" or "2:15:00")
+  
   const timeParts = timeField.split(':');
   if (timeParts.length < 2) {
     throw new Error(`Invalid time format: ${timeField}. Expected format: HH:MM or H:M`);
@@ -202,10 +189,10 @@ export function parseDateTime(dateField: string, timeField: string): string {
   const seconds = timeParts[2] ? timeParts[2].padStart(2, '0') : '00';
   const formattedTime = `${hours}:${minutes}:${seconds}`;
   
-  // Combine date and time
+  
   const dateTime = `${formattedDate}T${formattedTime}`;
   
-  // Validate the format
+  
   const date = new Date(dateTime);
   if (isNaN(date.getTime())) {
     throw new Error(`Invalid date/time format: ${dateTime}`);
@@ -214,18 +201,16 @@ export function parseDateTime(dateField: string, timeField: string): string {
   return dateTime;
 }
 
-/**
- * Calculate end time from start time and duration
- */
+
 export function calculateEndTime(startDateTime: string, durationMinutes: number): string {
-  // Ensure the start time has timezone info (add UTC if not present)
+  
   let dateTimeWithTz = startDateTime;
   if (!startDateTime.includes('Z') && !startDateTime.includes('+') && !startDateTime.includes('T')) {
-    // If no timezone and no 'T', it's malformed
+    
     throw new Error(`Invalid datetime format: ${startDateTime}`);
   }
   
-  // If has 'T' but no timezone, assume UTC
+  
   if (startDateTime.includes('T') && !startDateTime.includes('Z') && !startDateTime.match(/[+-]\d{2}:\d{2}$/)) {
     dateTimeWithTz = startDateTime + 'Z';
   }

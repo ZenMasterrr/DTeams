@@ -36,7 +36,7 @@ export function WalletButton() {
     }
   };
 
-  // Set mounted state to handle window object safely
+  
   useEffect(() => {
     setIsMounted(true);
     return () => setIsMounted(false);

@@ -1,6 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { PrimaryButton } from "./buttons/PrimaryButton";
+import { Button } from "./ui/button";
 import { useState, useEffect } from "react";
 
 interface CustomWindow extends Window {
@@ -13,7 +13,7 @@ export const Appbar = () => {
     const router = useRouter();
     const [userAddress, setUserAddress] = useState<string | null>(null);
 
-    // Effect to check for an existing session and handle wallet events
+    
     useEffect(() => {
         const checkSession = async () => {
             if (window.ethereum) {
@@ -24,24 +24,24 @@ export const Appbar = () => {
                     setUserAddress(accounts[0]);
                 } else {
                     // If there's no token or no connected accounts, ensure user is logged out
-                    handleLogout(false); // Don't redirect, just clear state
+                    handleLogout(false); 
                 }
             }
         };
 
         checkSession();
 
-        // --- Event Listeners for MetaMask ---
+        
         const handleAccountsChanged = (accounts: string[]) => {
             if (accounts.length === 0) {
-                // Wallet disconnected
+                
                 handleLogout();
             } else {
-                // Switched to a new account, treat as a new login
+                
                 setUserAddress(accounts[0]);
-                // You might want to force a re-authentication here by clearing the old token
+                
                 localStorage.removeItem("token");
-                router.push('/signup'); // Redirect to signup to get a new token for the new address
+                router.push('/signup'); 
             }
         };
 
@@ -49,7 +49,7 @@ export const Appbar = () => {
             window.ethereum.on('accountsChanged', handleAccountsChanged);
         }
 
-        // Cleanup listeners on component unmount
+        
         return () => {
             if (window.ethereum) {
                 window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
@@ -62,7 +62,7 @@ export const Appbar = () => {
             try {
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 setUserAddress(accounts[0]);
-                // After connecting, redirect to signup to get a JWT token
+                
                 router.push('/signup');
             } catch (error) {
                 console.error("Error connecting to MetaMask", error);
@@ -89,10 +89,10 @@ export const Appbar = () => {
                 {userAddress ? (
                     <div className="flex items-center">
                         <span className="mr-4 text-sm">{`${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`}</span>
-                        <PrimaryButton onClick={() => handleLogout()}>Logout</PrimaryButton>
+                        <Button onClick={() => handleLogout()}>Logout</Button>
                     </div>
                 ) : (
-                    <PrimaryButton onClick={connectWallet}>Connect Wallet</PrimaryButton>
+                    <Button onClick={connectWallet}>Connect Wallet</Button>
                 )}
             </div>
         </div>

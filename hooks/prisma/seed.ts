@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log(`Start seeding ...`);
 
-  // Create a default available trigger
+  
   const webhookTrigger = await prisma.availableTrigger.upsert({
     where: { id: '1' },
     update: {},
@@ -17,7 +17,7 @@ async function main() {
     },
   });
 
-  // Create a default available action
+  
   const emailAction = await prisma.availableAction.upsert({
     where: { id: '1' },
     update: {},

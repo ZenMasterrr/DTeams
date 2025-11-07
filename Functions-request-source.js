@@ -10,7 +10,7 @@ if (!secrets.smtpPassword) {
 }
 
 const emailRequest = Functions.makeHttpRequest({
-  url: "https://api.sendgrid.com/v3/mail/send", // We will use SendGrid for simplicity, but this can be adapted for AWS SES
+  url: "https://api.sendgrid.com/v3/mail/send", 
   method: "POST",
   headers: {
     "Authorization": `Bearer ${secrets.sendgridApiKey}`,

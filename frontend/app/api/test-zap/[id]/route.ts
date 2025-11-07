@@ -11,32 +11,31 @@ import {
   calculateEndTime,
 } from '../google-apis';
 
-// Load environment variables from .env file
-// Try multiple paths to find the .env file
+
 const envPaths = [
-  resolve(process.cwd(), '.env'),           // Current directory
-  resolve(process.cwd(), '../.env'),        // Dteams/.env (parent directory)
-  resolve(process.cwd(), '../../.env'),     // Two levels up
-  resolve(process.cwd(), '../Dteams/.env'), // Alternative parent path
-  resolve(process.cwd(), '.env.local'),     // Frontend/.env.local
-  resolve(process.cwd(), 'hooks', '.env'),  // hooks/.env directory
-  resolve(__dirname, '../../../.env'),       // Relative to this file - root
-  resolve(__dirname, '../../../../hooks/.env'), // Relative to this file - hooks
+  resolve(process.cwd(), '.env'),           
+  resolve(process.cwd(), '../.env'),        
+  resolve(process.cwd(), '../../.env'),    
+  resolve(process.cwd(), '../Dteams/.env'), 
+  resolve(process.cwd(), '.env.local'),    
+  resolve(process.cwd(), 'hooks', '.env'),  
+  resolve(__dirname, '../../../.env'),       
+  resolve(__dirname, '../../../../hooks/.env'), 
 ];
 
-// Load environment variables from all possible paths
+
 let envLoaded = false;
 envPaths.forEach(envPath => {
   try {
-    const result = dotenv.config({ path: envPath, override: false }); // override: false means don't overwrite existing vars
+    const result = dotenv.config({ path: envPath, override: false }); 
     if (!result.error && result.parsed && Object.keys(result.parsed).length > 0) {
       envLoaded = true;
       if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ Loaded env from: ${envPath}`);
+        console.log(`Loaded env from: ${envPath}`);
       }
     }
   } catch (error) {
-    // Silently fail if file doesn't exist
+    
   }
 });
 
@@ -46,13 +45,13 @@ if (!envLoaded && process.env.NODE_ENV === 'development') {
 
 const prisma = new PrismaClient();
 
-// AWS SES SMTP configuration
+
 const SMTP_USERNAME = process.env.SMTP_USERNAME;
 const SMTP_PASSWORD = process.env.SMTP_PASSWORD;
 const SMTP_ENDPOINT = process.env.SMTP_ENDPOINT || 'email-smtp.us-east-1.amazonaws.com';
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@example.com';
 
-// Debug: Log if credentials are loaded (remove in production)
+
 if (process.env.NODE_ENV === 'development') {
   console.log('🔍 SMTP Config Check:', {
     hasUsername: !!SMTP_USERNAME,
@@ -63,26 +62,26 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
-// Send email using AWS SES SMTP
+
 async function sendEmail(to: string, subject: string, body: string) {
-  // Check if we have SMTP credentials
+  
   if (!SMTP_USERNAME || !SMTP_PASSWORD) {
     throw new Error('AWS SES SMTP credentials not configured. Please set SMTP_USERNAME and SMTP_PASSWORD environment variables.');
   }
 
   try {
-    // Create SMTP transporter using nodemailer
+    
     const transporter = nodemailer.createTransport({
       host: SMTP_ENDPOINT,
       port: 587,
-      secure: false, // true for 465, false for other ports
+      secure: false, 
       auth: {
         user: SMTP_USERNAME,
         pass: SMTP_PASSWORD,
       },
     });
 
-    // Send email
+    
     const info = await transporter.sendMail({
       from: FROM_EMAIL,
       to: to,
@@ -98,7 +97,7 @@ async function sendEmail(to: string, subject: string, body: string) {
   }
 }
 
-// Helper function to call webhook
+
 async function callWebhook(url: string, method: string = 'POST', headers: Record<string, string> = {}, payload: any = {}) {
   try {
     const response = await fetch(url, {
@@ -122,15 +121,15 @@ async function callWebhook(url: string, method: string = 'POST', headers: Record
       throw new Error(`Webhook returned ${response.status}: ${JSON.stringify(responseData)}`);
     }
 
-    console.log(`✅ Webhook called successfully: ${url}`);
+    console.log(` Webhook called successfully: ${url}`);
     return { success: true, status: response.status, data: responseData };
   } catch (error) {
-    console.error(`❌ Error calling webhook ${url}:`, error);
+    console.error(` Error calling webhook ${url}:`, error);
     throw error;
   }
 }
 
-// Helper function to update action run status
+
 async function updateActionRunStatus(
   actionRunId: string,
   status: 'success' | 'failed' | 'running',
@@ -150,7 +149,7 @@ async function updateActionRunStatus(
   });
 }
 
-// In-memory store for mock zaps (for testing)
+
 const mockZapsStore: Record<string, any> = {};
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {

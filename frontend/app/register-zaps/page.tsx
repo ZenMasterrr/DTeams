@@ -4,6 +4,13 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
+interface Zap {
+  id: string;
+  trigger: any;
+  actions: any[];
+  status?: string;
+}
+
 export default function RegisterZapsPage() {
   const [status, setStatus] = useState<string>('');
   const [registeredCount, setRegisteredCount] = useState<number>(0);
@@ -14,25 +21,25 @@ export default function RegisterZapsPage() {
     setStatus('Reading zaps from localStorage...');
     
     try {
-      // Get all zaps from localStorage (stored as mockZaps object)
+      
       const zapsJson = localStorage.getItem('mockZaps');
       if (!zapsJson) {
-        setStatus('❌ No zaps found in localStorage');
+        setStatus(' No zaps found in localStorage');
         setLoading(false);
         return;
       }
 
       const zapsObject = JSON.parse(zapsJson);
-      const zaps = Object.values(zapsObject); // Convert object to array
-      setStatus(`📋 Found ${zaps.length} zaps in localStorage`);
+      const zaps = Object.values(zapsObject) as Zap[]; 
+      setStatus(` Found ${zaps.length} zaps in localStorage`);
 
       let successCount = 0;
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3002';
 
-      // Register each zap
+      
       for (const zap of zaps) {
         try {
-          console.log(`📤 Registering zap: ${zap.id}`, { trigger: zap.trigger });
+          console.log(` Registering zap: ${zap.id}`, { trigger: zap.trigger });
           
           const response = await fetch(`${backendUrl}/api/v1/zap/register`, {
             method: 'POST',
@@ -52,21 +59,21 @@ export default function RegisterZapsPage() {
 
           if (response.ok) {
             successCount++;
-            console.log(`✅ Registered zap: ${zap.id}`);
+            console.log(` Registered zap: ${zap.id}`);
           } else {
-            console.error(`❌ Failed to register zap: ${zap.id} - Status: ${response.status} - ${responseText}`);
+            console.error(` Failed to register zap: ${zap.id} - Status: ${response.status} - ${responseText}`);
           }
         } catch (error) {
-          console.error(`❌ Error registering zap ${zap.id}:`, error);
+          console.error(` Error registering zap ${zap.id}:`, error);
         }
       }
 
       setRegisteredCount(successCount);
-      setStatus(`✅ Successfully registered ${successCount} out of ${zaps.length} zaps for automatic monitoring!`);
+      setStatus(` Successfully registered ${successCount} out of ${zaps.length} zaps for automatic monitoring!`);
 
     } catch (error) {
       console.error('Error registering zaps:', error);
-      setStatus(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setStatus(` Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
     setLoading(false);

@@ -1,4 +1,4 @@
-// Polyfills
+
 import 'core-js/features/array/find';
 import 'core-js/features/array/includes';
 import 'core-js/features/number/is-nan';
@@ -6,7 +6,6 @@ import 'core-js/features/number/is-nan';
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import "./error-handler"; // Import the error handler
 import { Providers } from "./providers";
 import { Web3Provider } from "@/components/Web3Provider";
 

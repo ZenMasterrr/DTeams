@@ -5,8 +5,8 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { resolve } from 'path';
 
-// Load environment variables from hooks/.env and parent .env
-dotenv.config({ path: resolve(__dirname, '../../../.env') }); // hooks/.env
+
+dotenv.config({ path: resolve(__dirname, '../../../.env') });
 dotenv.config({ path: resolve(__dirname, '../../../../.env'), override: false }); // Dteams/.env
 
 const router = require('express').Router();
@@ -17,7 +17,7 @@ const oauth2Client = new OAuth2Client(
   process.env.GOOGLE_REDIRECT_URI
 );
 
-// Define the metadata type for Google OAuth
+
 type GoogleAuthData = {
   accessToken: string;
   refreshToken: string;
@@ -28,7 +28,7 @@ type UserMetadata = {
   google?: GoogleAuthData;
 } | null;
 
-// Type for the user data we'll return to the client
+
 type SafeUser = {
   id: number;
   name: string | null;
@@ -38,7 +38,7 @@ type SafeUser = {
   isGoogleAuthenticated: boolean;
 };
 
-// Type for the Prisma User with metadata
+
 type UserWithMetadata = {
   id: number;
   name: string | null;
@@ -50,7 +50,7 @@ type UserWithMetadata = {
   metadata: UserMetadata;
 };
 
-// Google OAuth URL generation
+
 router.get('/google', (req: Request, res: Response) => {
   const url = oauth2Client.generateAuthUrl({
     access_type: 'offline',
@@ -62,7 +62,7 @@ router.get('/google', (req: Request, res: Response) => {
   res.redirect(url);
 });
 
-// Google OAuth callback
+
 router.get('/google/callback', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { code } = req.query;
@@ -79,11 +79,11 @@ router.get('/google/callback', async (req: Request, res: Response, next: NextFun
       throw new Error('No email found in Google account');
     }
 
-    // Calculate token expiry (1 hour from now)
+    
     const tokenExpiry = new Date();
     tokenExpiry.setHours(tokenExpiry.getHours() + 1);
 
-    // Check if user exists
+    
     const existingUser = await prisma.user.findUnique({
       where: { email: payload.email }
     }) as UserWithMetadata | null;
@@ -91,14 +91,14 @@ router.get('/google/callback', async (req: Request, res: Response, next: NextFun
     let user: UserWithMetadata | null = null;
     
     if (existingUser) {
-      // Parse existing metadata
+      
       const currentMetadata = existingUser.metadata ? 
         (typeof existingUser.metadata === 'string' ? 
           JSON.parse(existingUser.metadata) : 
           existingUser.metadata) as UserMetadata : 
         null;
       
-      // Update user with new metadata
+     
       const updatedMetadata: UserMetadata = {
         ...(currentMetadata || {}),
         google: {
@@ -108,25 +108,25 @@ router.get('/google/callback', async (req: Request, res: Response, next: NextFun
         }
       };
 
-      // Update the user with the new metadata using type assertion
+      
       const updateData: any = {
         name: payload.name,
         metadata: updatedMetadata
       };
 
-      // Perform the update with the typed data
+      
       const updatedUser = await prisma.user.update({
         where: { id: existingUser.id },
         data: updateData
       });
 
-      // Create the UserWithMetadata object with proper typing
+      
       user = {
         ...updatedUser,
         metadata: updatedMetadata as Prisma.JsonValue
       } as UserWithMetadata;
     } else {
-// Create new user
+
       const newUserMetadata: UserMetadata = {
         google: {
           accessToken: tokens.access_token!,
@@ -141,30 +141,30 @@ router.get('/google/callback', async (req: Request, res: Response, next: NextFun
           email: payload.email,
           password: null,
           address: `user_${Date.now()}`,
-          metadata: newUserMetadata as any  // Using any to bypass Prisma's type checking
+          metadata: newUserMetadata as any  
         }
       });
       
-      // Manually create a UserWithMetadata object
+      
       user = {
         ...newUser,
         metadata: newUserMetadata
       } as UserWithMetadata;
     }
 
-    // Create JWT
+    
     const token = jwt.sign(
       { userId: user.id, address: user.address },
       process.env.JWT_SECRET!,
       { expiresIn: '7d' }
     );
 
-    // Parse the metadata if it's a string
+    
     const metadata = user.metadata ? 
       (typeof user.metadata === 'string' ? JSON.parse(user.metadata) : user.metadata) : 
       null;
 
-    // Create safe user object for the client
+    
     const safeUser: SafeUser = {
       id: user.id,
       name: user.name,
@@ -174,7 +174,7 @@ router.get('/google/callback', async (req: Request, res: Response, next: NextFun
       isGoogleAuthenticated: !!(metadata as UserMetadata)?.google?.accessToken,
     };
 
-    // Redirect to frontend with token
+    
     res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
 
   } catch (error) {
@@ -184,7 +184,7 @@ router.get('/google/callback', async (req: Request, res: Response, next: NextFun
   }
 });
 
-// Get current user
+
 router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
@@ -195,7 +195,7 @@ router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: number };
 
-    // Get user data with metadata
+    
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
@@ -211,21 +211,21 @@ router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Parse metadata safely
+    
     const userMetadata: UserMetadata = user.metadata 
       ? (typeof user.metadata === 'string' 
           ? JSON.parse(user.metadata) 
           : user.metadata)
       : null;
 
-    // Check if Google token is expired
+    
     const googleData = userMetadata?.google;
     let isTokenExpired = true;
     if (googleData?.tokenExpiry) {
       isTokenExpired = new Date(googleData.tokenExpiry) < new Date();
     }
 
-    // Create safe user object for the client
+    
     const safeUser: SafeUser = {
       id: user.id,
       name: user.name,

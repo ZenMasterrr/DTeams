@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  */
 contract ZapV2 is ERC721URIStorage, Ownable {
     
-    // ============ Structs ============
+
     
     struct Trigger {
         uint256 triggerType; // 0 = on-chain, 1 = off-chain (Gmail, Price, Webhook)
@@ -42,7 +42,7 @@ contract ZapV2 is ERC721URIStorage, Ownable {
         bool active;
     }
 
-    // ============ State Variables ============
+    
     
     uint256 private _nextTokenId;
     mapping(uint256 => ZapData) public zaps;
@@ -53,13 +53,13 @@ contract ZapV2 is ERC721URIStorage, Ownable {
     uint256 public minKeeperStake = 0.1 ether;
     uint256 public executionReward = 0.001 ether;
     
-    // Execution mode
+    
     bool public keeperNetworkEnabled = false;
     
-    // Fund pool for keeper rewards
+    
     uint256 public rewardPool;
 
-    // ============ Events ============
+    
     
     event ZapMinted(uint256 indexed zapId, address indexed owner, uint256 triggerType);
     event ZapExecuted(uint256 indexed zapId, address indexed executor, bool isKeeper, uint256 reward);
@@ -68,11 +68,11 @@ contract ZapV2 is ERC721URIStorage, Ownable {
     event RewardPoolFunded(address indexed funder, uint256 amount);
     event ExecutionRewardUpdated(uint256 newReward);
 
-    // ============ Constructor ============
+    
     
     constructor() ERC721("ZapNFT", "ZAP") Ownable(msg.sender) {}
 
-    // ============ Zap Management Functions ============
+    
     
     /**
      * @notice Mint a new Zap NFT

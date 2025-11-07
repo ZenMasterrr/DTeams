@@ -12,7 +12,7 @@ declare global {
   }
 }
 
-// Create a client with default options
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -33,7 +33,7 @@ export function Providers({ children }: ProvidersProps) {
     setMounted(true);
   }, []);
 
-  // Prevent hydration mismatch
+  
   if (!mounted) {
     return null;
   }

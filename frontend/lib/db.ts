@@ -1,4 +1,4 @@
-// Core types for the application
+
 export interface User {
   id: number;
   name?: string | null;
@@ -63,7 +63,7 @@ export interface CreateZapInput {
 class DatabaseService {
   private apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
 
-  // User operations
+  
   async getCurrentUser(): Promise<User> {
     const response = await fetch(`${this.apiUrl}/auth/me`, {
       credentials: 'include',
@@ -76,7 +76,7 @@ class DatabaseService {
     return response.json();
   }
 
-  // Zap operations
+  
   async getZaps(userId: string): Promise<Zap[]> {
     const response = await fetch(`${this.apiUrl}/zaps?userId=${userId}`, {
       credentials: 'include',
@@ -149,7 +149,7 @@ class DatabaseService {
     }
   }
 
-  // Test a zap
+  
   async testZap(id: string): Promise<{ success: boolean; message: string; results: any[] }> {
     const response = await fetch(`${this.apiUrl}/test-zap/${id}`, {
       method: 'POST',
@@ -164,7 +164,7 @@ class DatabaseService {
     return response.json();
   }
 
-  // Available triggers and actions
+  
   async getAvailableTriggers() {
     const response = await fetch(`${this.apiUrl}/triggers`, {
       credentials: 'include',
@@ -189,7 +189,7 @@ class DatabaseService {
     return response.json();
   }
   
-  // Zap runs
+  
   async getZapRuns(zapId: string): Promise<ZapRun[]> {
     const response = await fetch(`${this.apiUrl}/zaps/${zapId}/runs`, {
       credentials: 'include',

@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
-// Types
+
 type ZapWithRelations = Prisma.ZapGetPayload<{
   include: {
     trigger: true;
@@ -30,7 +30,7 @@ type CreateZapInput = {
 
 type UpdateZapInput = Partial<CreateZapInput> & { id: string };
 
-// API Client
+
 class ApiClient {
   private async fetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
@@ -51,7 +51,7 @@ class ApiClient {
     return response.json();
   }
 
-  // Zap Methods
+  
   async getZaps(): Promise<ZapWithRelations[]> {
     return this.fetch('/zaps');
   }
@@ -96,7 +96,7 @@ class ApiClient {
     });
   }
 
-  // Webhook Methods
+  
   async triggerWebhook(webhookId: string, data: any): Promise<any> {
     return this.fetch(`/webhook/${webhookId}`, {
       method: 'POST',

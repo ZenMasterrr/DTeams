@@ -12,22 +12,22 @@ describe('Zap API', () => {
   let testPrisma: PrismaClient;
 
   beforeAll(async () => {
-    // Initialize test app and database
+    
     const testApp = await createTestApp();
     app = testApp.app;
     testPrisma = testApp.prisma;
     
-    // Reset database
+    
     await resetTestDatabase();
     
-    // Create a test user
+    
     const testUser = await createTestUser();
     userId = testUser.id;
     authToken = await getTestAuthToken(userId);
   });
 
   afterAll(async () => {
-    // Clean up test database
+    
     await testPrisma.$disconnect();
   });
 
@@ -81,7 +81,7 @@ describe('Zap API', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .send({
           ...zapData,
-          userId, // Include userId in the request
+          userId, 
         });
 
       expect(res.status).toBe(201);
@@ -96,10 +96,10 @@ describe('Zap API', () => {
 
   describe('GET /api/zaps/:id', () => {
     it('should get a zap by id', async () => {
-      // First create a zap
+      
       const zap = await createTestZap(userId);
 
-      // Then fetch it
+      
       const res = await request(app)
         .get(`/api/zaps/${zap.id}`)
         .set('Authorization', `Bearer ${authToken}`);
@@ -153,7 +153,7 @@ describe('Zap API', () => {
 
       expect(res.status).toBe(204);
 
-      // Verify it's deleted
+      
       const getRes = await request(app)
         .get(`/api/zaps/${zap.id}`)
         .set('Authorization', `Bearer ${authToken}`);

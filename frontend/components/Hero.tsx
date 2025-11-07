@@ -1,8 +1,7 @@
 "use client"
 import { useRouter } from "next/navigation"
 import { Feature } from "./Feature"
-import { PrimaryButton } from "./buttons/PrimaryButton"
-import { SecondaryButton } from "./buttons/SecondaryButton"
+import { Button } from "./ui/button"
 
 export const Hero = () => {
     const router = useRouter();
@@ -20,9 +19,9 @@ export const Hero = () => {
 
         <div className="flex justify-center pt-4">
             <div className="flex">
-                <PrimaryButton onClick={() => {
+                <Button onClick={() => {
                     router.push("/signup")
-                }} size="big">Get Started free</PrimaryButton>
+                }} size="lg">Get Started free</Button>
             </div>
         </div>
     </div>

@@ -6,21 +6,21 @@ export async function POST(req: NextRequest, { params }: { params: { webhookId: 
   const { webhookId } = params;
 
   try {
-    const provider = new ethers.providers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
-    const signer = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-    const zapContract = new ethers.Contract(process.env.ZAP_CONTRACT_ADDRESS!, Zap.abi, signer);
+    const provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+    const zapContract = new ethers.Contract(process.env.ZAP_CONTRACT_ADDRESS!, Zap.abi, wallet);
 
     // Find the Zap with the matching webhookId
-    const filter = zapContract.filters.Transfer(ethers.constants.AddressZero, null, null);
+    const filter = zapContract.filters.Transfer(ethers.ZeroAddress, null, null);
     const events = await zapContract.queryFilter(filter);
 
     let zapIdToExecute = -1;
 
     for (const event of events) {
-      if (!event.args) continue;
+      if (!('args' in event) || !event.args) continue;
       const zapId = event.args.tokenId;
       const zapData = await zapContract.zaps(zapId);
-      const decodedWebhookId = ethers.utils.defaultAbiCoder.decode(['string'], zapData.trigger.data)[0];
+      const decodedWebhookId = ethers.AbiCoder.defaultAbiCoder().decode(['string'], zapData.trigger.data)[0];
 
       if (decodedWebhookId === webhookId) {
         zapIdToExecute = zapId;

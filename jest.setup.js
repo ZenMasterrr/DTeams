@@ -4,7 +4,7 @@ const path = require('path');
 // Load environment variables from .env file
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-// Also try loading from hooks/.env if it exists
+
 dotenv.config({ path: path.resolve(__dirname, 'hooks', '.env'), override: false });
 
 console.log('Environment variables loaded for tests');

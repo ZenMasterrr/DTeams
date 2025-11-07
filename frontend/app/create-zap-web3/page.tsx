@@ -8,7 +8,7 @@ import Link from 'next/link';
 const ZAP_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ZAP_CONTRACT_ADDRESS || '';
 const NETWORK = process.env.NEXT_PUBLIC_NETWORK || 'sepolia';
 
-// Simplified ABI
+
 const ZAP_ABI = [
   "function mintZap(tuple(uint256 triggerType, address source, bytes data) trigger, tuple(uint256 actionType, address target, uint256 value, bytes data)[] actions, string metadataURI) returns (uint256)",
   "function getTotalZaps() view returns (uint256)"
@@ -49,7 +49,7 @@ export default function CreateZapWeb3() {
 
   async function connectWallet() {
     if (typeof window.ethereum === 'undefined') {
-      setStatus('❌ Please install MetaMask!');
+      setStatus(' Please install MetaMask!');
       window.open('https://metamask.io/', '_blank');
       return;
     }
@@ -63,19 +63,19 @@ export default function CreateZapWeb3() {
       const signer = await provider.getSigner();
       const address = await signer.getAddress();
 
-      // Check network
+      
       const network = await provider.getNetwork();
       if (network.name !== NETWORK && Number(network.chainId) !== 11155111) { // Sepolia chainId
-        setStatus('⚠️ Please switch to Sepolia network in MetaMask');
-        // Try to switch network
+        setStatus(' Please switch to Sepolia network in MetaMask');
+        
         try {
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '0xaa36a7' }], // Sepolia
+            params: [{ chainId: '0xaa36a7' }], 
           });
         } catch (switchError: any) {
           if (switchError.code === 4902) {
-            // Network not added, add it
+            
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [{
@@ -96,9 +96,9 @@ export default function CreateZapWeb3() {
 
       setAccount(address);
       setConnected(true);
-      setStatus(`✅ Connected: ${address.slice(0, 6)}...${address.slice(-4)}`);
+      setStatus(` Connected: ${address.slice(0, 6)}...${address.slice(-4)}`);
     } catch (error: any) {
-      setStatus(`❌ Error: ${error.message}`);
+      setStatus(` Error: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -106,17 +106,17 @@ export default function CreateZapWeb3() {
 
   async function createZap() {
     if (!connected) {
-      setStatus('❌ Please connect wallet first');
+      setStatus(' Please connect wallet first');
       return;
     }
 
     if (!triggerValue || !actionValue) {
-      setStatus('❌ Please fill all fields');
+      setStatus(' Please fill all fields');
       return;
     }
 
     if (!ZAP_CONTRACT_ADDRESS) {
-      setStatus('❌ Contract address not configured. Please deploy contract first.');
+      setStatus(' Contract address not configured. Please deploy contract first.');
       return;
     }
 
@@ -132,7 +132,7 @@ export default function CreateZapWeb3() {
 
       setStatus('Preparing transaction...');
 
-      // Prepare trigger data (IPFS hash placeholder)
+      // Prepare trigger data 
       const triggerConfig = {
         type: triggerType,
         value: triggerValue
@@ -140,7 +140,7 @@ export default function CreateZapWeb3() {
       const triggerData = ethers.toUtf8Bytes(JSON.stringify(triggerConfig));
 
       const trigger = {
-        triggerType: 1, // Off-chain
+        triggerType: 1, 
         source: ethers.ZeroAddress,
         data: triggerData
       };
@@ -154,31 +154,31 @@ export default function CreateZapWeb3() {
 
       const actions = [
         {
-          actionType: 1, // Off-chain
+          actionType: 1, 
           target: ethers.ZeroAddress,
           value: 0,
           data: actionData
         }
       ];
 
-      // Metadata URI (would be IPFS in production)
+      // Metadata URI 
       const metadata = {
         name: `Zap: ${triggerType} to ${actionType}`,
         description: `When ${triggerType} ${triggerValue}, then ${actionType} ${actionValue}`,
         created: new Date().toISOString()
       };
-      // Encode to base64 with proper UTF-8 handling
+      
       const metadataJson = JSON.stringify(metadata);
       const metadataBase64 = btoa(unescape(encodeURIComponent(metadataJson)));
       const metadataURI = `data:application/json;base64,${metadataBase64}`;
 
       setStatus('Please confirm transaction in MetaMask...');
 
-      // Estimate gas first
-      let gasLimit = 300000; // Default fallback
+      //gas
+      let gasLimit = 300000; 
       try {
         const gasEstimate = await zapContract.mintZap.estimateGas(trigger, actions, metadataURI);
-        gasLimit = Number(gasEstimate) + 50000; // Add 50k buffer
+        gasLimit = Number(gasEstimate) + 50000; 
         console.log('Gas estimate:', gasEstimate.toString(), 'Using:', gasLimit);
         
         // Calculate cost
@@ -192,7 +192,7 @@ export default function CreateZapWeb3() {
         setStatus('⚠️ Using default gas limit. Please confirm in MetaMask...');
       }
 
-      // Mint zap with calculated gas limit
+      
       const tx = await zapContract.mintZap(trigger, actions, metadataURI, {
         gasLimit: gasLimit
       });
@@ -203,40 +203,40 @@ export default function CreateZapWeb3() {
       const receipt = await tx.wait();
 
       if (receipt.status === 1) {
-        // Extract zap ID from events
+        
         const totalZaps = await zapContract.getTotalZaps();
         const newZapId = (totalZaps - 1n).toString();
         
         setZapId(newZapId);
-        setStatus(`✅ Zap created successfully! NFT ID: ${newZapId}`);
+        setStatus(` Zap created successfully! NFT ID: ${newZapId}`);
         
-        // Also register with backend for monitoring
+        
         await registerWithBackend(newZapId, trigger, actions);
         
-        // Redirect to dashboard after 3 seconds
+        
         setTimeout(() => {
           router.push('/dashboard?zap_created=true&zap_id=' + newZapId);
         }, 3000);
       } else {
-        setStatus('❌ Transaction failed');
+        setStatus(' Transaction failed');
       }
 
     } catch (error: any) {
       console.error('Error creating zap:', error);
       if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
-        setStatus('❌ Transaction rejected by user');
+        setStatus(' Transaction rejected by user');
       } else if (error.code === 'INSUFFICIENT_FUNDS' || error.code === -32000) {
-        // Get actual balance
+        
         const provider = new ethers.BrowserProvider(window.ethereum);
         const balance = await provider.getBalance(account);
         const balanceEth = ethers.formatEther(balance);
-        setStatus(`❌ Insufficient funds. You have ${balanceEth} ETH. Gas cost may exceed balance.`);
+        setStatus(` Insufficient funds. You have ${balanceEth} ETH. Gas cost may exceed balance.`);
       } else if (error.reason) {
-        setStatus(`❌ Contract error: ${error.reason}`);
+        setStatus(` Contract error: ${error.reason}`);
       } else if (error.message) {
-        setStatus(`❌ Error: ${error.message}`);
+        setStatus(` Error: ${error.message}`);
       } else {
-        setStatus(`❌ Unknown error. Check console for details.`);
+        setStatus(` Unknown error. Check console for details.`);
       }
     } finally {
       setLoading(false);
@@ -257,9 +257,9 @@ export default function CreateZapWeb3() {
           blockchain: true
         })
       });
-      console.log('✅ Registered with backend');
+      console.log(' Registered with backend');
     } catch (error) {
-      console.warn('⚠️ Could not register with backend:', error);
+      console.warn(' Could not register with backend:', error);
     }
   }
 
@@ -393,7 +393,7 @@ export default function CreateZapWeb3() {
               
               <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
                 <p className="text-sm text-blue-800">
-                  <strong>ℹ️ Blockchain Transaction:</strong> This will mint your zap as an NFT on Sepolia testnet. You'll need to approve the transaction in MetaMask.
+                  <strong> Blockchain Transaction:</strong> This will mint your zap as an NFT on Sepolia testnet. You'll need to approve the transaction in MetaMask.
                 </p>
               </div>
 

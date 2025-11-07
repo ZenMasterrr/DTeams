@@ -1,8 +1,7 @@
 "use client";
-"use client";
 import { Appbar } from "@/components/Appbar";
 import { CheckFeature } from "@/components/CheckFeature";
-import { PrimaryButton } from "@/components/buttons/PrimaryButton";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { BACKEND_URL } from "../config";
 import axios from "axios";
@@ -17,7 +16,7 @@ export default function() {
     const router = useRouter();
 
     const handleSignup = async () => {
-        // Clear any stale session token before starting a new signup
+        
         localStorage.removeItem("token");
 
         if (window.ethereum) {
@@ -60,7 +59,7 @@ export default function() {
                 </div>
                 <div className="flex-1 pt-6 pb-6 mt-12 px-4 border rounded flex flex-col justify-center items-center">
                     <div className="pt-4">
-                        <PrimaryButton onClick={handleSignup} size="big">Connect Wallet & Get Started</PrimaryButton>
+                        <Button onClick={handleSignup} size="lg">Connect Wallet & Get Started</Button>
                     </div>
                 </div>
             </div>

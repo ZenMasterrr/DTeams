@@ -12,12 +12,10 @@ interface ProcessedEmail {
   timestamp: Date;
 }
 
-// Keep track of processed emails to avoid duplicates
+
 const processedEmailIds = new Set<string>();
 
-/**
- * Check Gmail for new emails matching zap criteria
- */
+
 export async function checkGmailForTriggers(
   oauth2Client: OAuth2Client,
   userEmail: string,
@@ -28,7 +26,7 @@ export async function checkGmailForTriggers(
   try {
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
     
-    // Build search query
+    
     let query = `label:${label} is:unread`;
     if (criteria === 'subject') {
       query += ` subject:${value}`;
@@ -38,7 +36,7 @@ export async function checkGmailForTriggers(
       query += ` ${value}`;
     }
     
-    // Search for matching emails
+    
     const listResponse = await gmail.users.messages.list({
       userId: 'me',
       q: query,
@@ -49,12 +47,12 @@ export async function checkGmailForTriggers(
     const newEmails: ProcessedEmail[] = [];
     
     for (const message of messages) {
-      // Skip if already processed
+      
       if (processedEmailIds.has(message.id!)) {
         continue;
       }
       
-      // Get full message details
+      
       const msgResponse = await gmail.users.messages.get({
         userId: 'me',
         id: message.id!,
@@ -68,7 +66,7 @@ export async function checkGmailForTriggers(
       const subject = headers.find(h => h.name?.toLowerCase() === 'subject')?.value || 'No Subject';
       const date = headers.find(h => h.name?.toLowerCase() === 'date')?.value || new Date().toISOString();
       
-      // Extract body
+      
       let body = '';
       if (msg.payload?.parts) {
         const textPart = msg.payload.parts.find(p => p.mimeType === 'text/plain');
@@ -87,10 +85,10 @@ export async function checkGmailForTriggers(
         timestamp: new Date(date)
       });
       
-      // Mark as processed
+      
       processedEmailIds.add(message.id!);
       
-      // Mark as read (optional)
+      
       await gmail.users.messages.modify({
         userId: 'me',
         id: message.id!,
@@ -100,7 +98,7 @@ export async function checkGmailForTriggers(
       });
     }
     
-    console.log(`📧 Found ${newEmails.length} new emails for ${userEmail}`);
+    console.log(` Found ${newEmails.length} new emails for ${userEmail}`);
     return newEmails;
     
   } catch (error) {
@@ -109,17 +107,15 @@ export async function checkGmailForTriggers(
   }
 }
 
-/**
- * Execute a zap via the frontend API
- */
+
 async function executeZap(zap: any, triggerData: any) {
   try {
     const axios = require('axios');
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     
-    console.log(`🚀 Executing zap ${zap.id}...`);
+    console.log(` Executing zap ${zap.id}...`);
     
-    // Send full zap configuration along with trigger data
+   
     const response = await axios.post(
       `${frontendUrl}/api/test-zap/${zap.id}`,
       { 
@@ -138,19 +134,17 @@ async function executeZap(zap: any, triggerData: any) {
     return response.data;
     
   } catch (error) {
-    console.error(`❌ Error executing zap ${zap.id}:`, error instanceof Error ? error.message : error);
+    console.error(` Error executing zap ${zap.id}:`, error instanceof Error ? error.message : error);
     throw error;
   }
 }
 
-/**
- * Get all registered Google Workflow zaps from file system
- */
+
 async function getRegisteredZaps(): Promise<any[]> {
   try {
     const fs = require('fs');
     const path = require('path');
-    // Read from hooks/ directory (from dist/src/triggers/ go up 3 levels)
+    
     const registeredZapsPath = path.join(__dirname, '..', '..', '..', 'registered-zaps.json');
     
     if (!fs.existsSync(registeredZapsPath)) {
@@ -162,9 +156,9 @@ async function getRegisteredZaps(): Promise<any[]> {
     const registeredZaps = JSON.parse(data);
     const zaps = registeredZaps.zaps || [];
     
-    console.log(`🔍 Read ${zaps.length} zaps from file`);
+    console.log(` Read ${zaps.length} zaps from file`);
     
-    // Filter for Google Workflow zaps with Gmail triggers
+    
     const filteredZaps = zaps.filter((zap: any) => {
       const isActive = zap.status === 'active';
       const isGoogleWorkflow = zap.trigger?.type === 'google_workflow';
@@ -191,12 +185,10 @@ async function getRegisteredZaps(): Promise<any[]> {
   }
 }
 
-/**
- * Monitor all active Gmail-triggered zaps
- */
+
 export async function monitorAllGmailZaps() {
   try {
-    // Get all users with Google tokens
+    
     const users = await prisma.user.findMany({
       where: {
         googleAccessToken: { not: null }
@@ -217,9 +209,9 @@ export async function monitorAllGmailZaps() {
     
     console.log(`🔍 Monitoring Gmail for ${users.length} users...`);
     
-    // Get registered Google Workflow zaps
+    
     const registeredZaps = await getRegisteredZaps();
-    console.log(`📋 Found ${registeredZaps.length} registered Google Workflow zaps`);
+    console.log(` Found ${registeredZaps.length} registered Google Workflow zaps`);
     
     for (const user of users) {
       const oauth2Client = new OAuth2Client(
@@ -232,9 +224,9 @@ export async function monitorAllGmailZaps() {
         refresh_token: user.googleRefreshToken || undefined
       });
       
-      // Monitor each registered zap
+      
       for (const zap of registeredZaps) {
-        // Correct path: zap.trigger.workflow.steps[0] (not zap.trigger.config.workflow)
+        
         const triggerStep = zap.trigger?.workflow?.steps?.[0];
         const gmailConfig = triggerStep?.config;
         
@@ -245,7 +237,7 @@ export async function monitorAllGmailZaps() {
           continue;
         }
         
-        // Check for new emails matching this zap's criteria
+        
         const newEmails = await checkGmailForTriggers(
           oauth2Client,
           user.email || user.address,
@@ -254,9 +246,9 @@ export async function monitorAllGmailZaps() {
           gmailConfig.label || 'INBOX'
         );
         
-        // Execute zap for each new email
+        
         for (const email of newEmails) {
-          console.log(`📨 New email trigger for zap ${zap.id}: ${email.subject}`);
+          console.log(` New email trigger for zap ${zap.id}: ${email.subject}`);
           
           try {
             await executeZap(zap, { email });

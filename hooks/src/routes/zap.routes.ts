@@ -5,7 +5,7 @@ import { z } from 'zod';
 const prisma = new PrismaClient();
 const router = Router();
 
-// Schema for request validation
+
 const createZapSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   trigger: z.object({
@@ -22,7 +22,7 @@ const createZapSchema = z.object({
   userId: z.string().min(1, 'User ID is required'),
 });
 
-// Error handling middleware
+
 const handleError = (error: any, res: Response) => {
   console.error('Error:', error);
   const status = error.status || 500;
@@ -30,7 +30,7 @@ const handleError = (error: any, res: Response) => {
   res.status(status).json({ success: false, message });
 };
 
-// Get all zaps for a user
+
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { userId } = req.query;
@@ -63,7 +63,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Get a single zap by ID
+
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -93,13 +93,13 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Create a new zap
+
 router.post('/', async (req: Request, res: Response) => {
   try {
     const data = createZapSchema.parse(req.body);
 
     const result = await prisma.$transaction(async (tx) => {
-      // Create the zap
+      
       const zap = await tx.zap.create({
         data: {
           name: data.name,
@@ -108,7 +108,7 @@ router.post('/', async (req: Request, res: Response) => {
         },
       });
 
-      // Create the trigger
+      
       await tx.trigger.create({
         data: {
           zapId: zap.id,
@@ -117,7 +117,7 @@ router.post('/', async (req: Request, res: Response) => {
         },
       });
 
-      // Create actions
+      
       const actions = await Promise.all(
         data.actions.map((action, index) =>
           tx.action.create({
@@ -140,14 +140,14 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// Update a zap
+
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const data = createZapSchema.partial().parse(req.body);
 
     const result = await prisma.$transaction(async (tx) => {
-      // Update the zap
+      
       const zap = await tx.zap.update({
         where: { id },
         data: {
@@ -167,14 +167,14 @@ router.put('/:id', async (req: Request, res: Response) => {
         },
       });
 
-      // Update actions if provided
+      
       if (data.actions) {
-        // Delete existing actions
+        
         await tx.action.deleteMany({
           where: { zapId: id },
         });
 
-        // Create new actions
+        
         await Promise.all(
           data.actions.map((action, index) =>
             tx.action.create({
@@ -189,7 +189,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         );
       }
 
-      // Return the updated zap with relations
+      
       return tx.zap.findUnique({
         where: { id },
         include: {
@@ -209,7 +209,7 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Delete a zap (soft delete)
+
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -225,7 +225,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Get zap runs
+
 router.get('/:id/runs', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

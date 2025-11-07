@@ -43,7 +43,7 @@ declare const window: CustomWindow;
 const ZAP_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ZAP_CONTRACT_ADDRESS || "";
 const ZAP_ORACLE_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_ORACLE_CONTRACT_ADDRESS || "";
 
-// Initialize provider and signer
+
 const getProvider = () => {
   if (typeof window !== 'undefined' && window.ethereum) {
     return new BrowserProvider(window.ethereum);
@@ -80,7 +80,7 @@ export default function CreateZap() {
       webhookUrl: trigger.webhookUrl
     };
     setTriggerData(newTrigger);
-    // Reset selectedTrigger to show the selected trigger display
+    
     setSelectedTrigger(null);
   };
 
@@ -97,24 +97,23 @@ export default function CreateZap() {
   };
 
   const handleCreateZap = async () => {
-    // Check if we have a trigger (either triggerData or googleWorkflow)
+   
     if (!triggerData && !googleWorkflow) {
-      console.error('Please set up your trigger first.'); // Use console.error for alerts
+      console.error('Please set up your trigger first.'); 
       toast.error('Please configure a trigger first');
       return;
     }
     
-    // For Google workflows, the actions are in the workflow steps
-    // For regular triggers, check if actions are added
+    
     if (!googleWorkflow && actions.length === 0) {
-      console.error('Please add at least one action.'); // Use console.error for alerts
+      console.error('Please add at least one action.'); 
       toast.error('Please add at least one action');
       return;
     }
     
-    // For Google workflows, validate that there are steps
+    
     if (googleWorkflow && (!googleWorkflow.steps || googleWorkflow.steps.length === 0)) {
-      console.error('Please configure at least one workflow step.'); // Use console.error for alerts
+      console.error('Please configure at least one workflow step.'); 
       toast.error('Please configure at least one workflow step');
       return;
     }
@@ -122,9 +121,9 @@ export default function CreateZap() {
     setIsLoading(true);
     
     try {
-      // Handle Google Workflow separately
+      
       if (googleWorkflow) {
-        // For Google workflows, save directly to backend without blockchain
+        
         const token = localStorage.getItem('token');
         if (!token) {
           throw new Error('No authentication token found. Please log in again.');
@@ -148,15 +147,15 @@ export default function CreateZap() {
 
         console.log('Creating Google Workflow Zap:', JSON.stringify(backendData, null, 2));
 
-        // Generate a unique ID for the new zap
+        
         const zapId = `zap-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
         const zapName = googleWorkflow.name || `Google Workflow: ${googleWorkflow.steps.map((s: any) => s.title).join(' → ')}`;
         
-        // Create a test URL for the new zap
+       
         const testUrl = `/api/test-zap/${zapId}`;
         
-        // Prepare the full zap data for localStorage
+        
         const newZap = {
           id: zapId,
           name: zapName,
@@ -174,7 +173,7 @@ export default function CreateZap() {
           updatedAt: new Date().toISOString(),
         };
         
-        // Save the new zap to localStorage
+        
         try {
           const savedZaps = JSON.parse(localStorage.getItem('mockZaps') || '{}');
           savedZaps[zapId] = newZap;
@@ -182,7 +181,7 @@ export default function CreateZap() {
           window.dispatchEvent(new Event('storage'));
           console.log('Saved Google Workflow zap to localStorage:', JSON.stringify(newZap, null, 2));
           
-          // Auto-register with backend for automatic monitoring
+          
           const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3002';
           try {
             await fetch(`${backendUrl}/api/v1/zap/register`, {
@@ -195,15 +194,15 @@ export default function CreateZap() {
                 status: 'active'
               })
             });
-            console.log('✅ Auto-registered zap for monitoring:', zapId);
+            console.log(' Auto-registered zap for monitoring:', zapId);
           } catch (regError) {
-            console.warn('⚠️ Could not auto-register zap (backend may be offline):', regError);
+            console.warn(' Could not auto-register zap (backend may be offline):', regError);
           }
         } catch (error) {
           console.error('Failed to save zap to localStorage:', error);
         }
         
-        // Send to backend
+       
         const response = await fetch('/api/zaps', {
           method: 'POST',
           headers: {
@@ -232,25 +231,24 @@ export default function CreateZap() {
         console.log('Google Workflow Zap saved to backend:', JSON.stringify(result, null, 2));
         console.log('Google Workflow Zap created successfully!');
         
-        // Store the newly created zap ID
+        
         if (result?.id) {
           setTimeout(() => {
             localStorage.setItem('newZapId', result.id);
           }, 100);
         }
         
-        // Redirect to dashboard
+       
         router.push('/dashboard?zap_created=true');
         return;
       }
       
-      // Regular zap creation (for price/webhook triggers)
-      // Type guard: ensure triggerData is not null
+      
       if (!triggerData) {
         throw new Error('Trigger data is required for regular zaps');
       }
       
-      // Create the Zap configuration object
+      
       const zap = {
         trigger: {
           type: triggerData.type,
@@ -260,7 +258,7 @@ export default function CreateZap() {
           webhookUrl: triggerData.webhookUrl,
           webhookId: triggerData.webhookId
         },
-        actions: [...actions] // Include all actions
+        actions: [...actions] 
       };
 
       console.log('Creating Zap:', JSON.stringify(zap, null, 2));
@@ -277,19 +275,19 @@ export default function CreateZap() {
         signer
       );
       
-      // Convert price to wei if it's a price-based trigger
+      
       const priceInWei = zap.trigger.price 
         ? ethers.parseEther(zap.trigger.price.toString()) 
         : BigInt(0);
       
-      // Construct the Trigger struct
+      
       const trigger = {
-        triggerType: 1, // 1 for off-chain (webhook)
-        source: ethers.ZeroAddress, // Not used for off-chain triggers
+        triggerType: 1, 
+        source: ethers.ZeroAddress, 
         data: ethers.toUtf8Bytes(zap.trigger.webhookUrl || "")
       };
 
-      // Process actions
+      
       const actionStructs = await Promise.all(zap.actions.map(async (action) => {
         let actionData = '0x';
         if (action.type === 'email') {
@@ -305,14 +303,14 @@ export default function CreateZap() {
         }
 
         return {
-          actionType: 1, // 1 for off-chain actions
+          actionType: 1,
           target: ZAP_ORACLE_CONTRACT_ADDRESS,
           value: 0,
           data: actionData
         };
       }));
 
-      // Create the Zap on-chain
+      
       const transactionData = {
         trigger: {
           triggerType: trigger.triggerType,
@@ -340,19 +338,19 @@ export default function CreateZap() {
         status: receipt.status === 1 ? 'success' : 'failed'
       });
       
-      // Prepare data for backend
+      
       const token = localStorage.getItem('token');
       if (!token) {
         throw new Error('No authentication token found. Please log in again.');
       }
 
-      // Format data for backend
+      
       const backendData = {
         trigger: {
           id: triggerData.type === 'webhook' ? 'webhook' : 'price_alert',
           config: {
             ...triggerData,
-            // Ensure we don't include undefined values
+            
             price: triggerData.price ? Number(triggerData.price) : undefined,
           }
         },
@@ -360,7 +358,7 @@ export default function CreateZap() {
           id: action.type,
           type: action.type,
           config: (() => {
-            // Create a clean config object without the type field
+            
             const { type, ...config } = action as any;
             return config;
           })()
@@ -371,10 +369,10 @@ export default function CreateZap() {
 
       console.log('Sending to backend:', JSON.stringify(backendData, null, 2));
       
-      // Generate a unique ID for the new zap
+      
       const zapId = `zap-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
-      // Create a more descriptive name based on trigger and actions
+      
       const triggerName = triggerData.type === 'webhook' 
         ? 'Webhook Trigger' 
         : `Price ${triggerData.type === 'price_above' ? 'Above' : 'Below'} ${triggerData.price} ${triggerData.token}`;
@@ -387,10 +385,10 @@ export default function CreateZap() {
       
       const zapName = `${triggerName} → ${actionNames}`;
       
-      // Create a test URL for the new zap
+      
       const testUrl = `/api/test-zap/${zapId}`;
       
-      // Prepare the full zap data for localStorage
+      
       const newZap = {
         id: zapId,
         name: zapName,
@@ -411,13 +409,13 @@ export default function CreateZap() {
         updatedAt: new Date().toISOString(),
       };
       
-      // Save the new zap to localStorage for the dashboard to pick up
+      
       try {
         const savedZaps = JSON.parse(localStorage.getItem('mockZaps') || '{}');
         savedZaps[zapId] = newZap;
         localStorage.setItem('mockZaps', JSON.stringify(savedZaps));
         
-        // Dispatch a storage event to notify other tabs/windows
+        
         window.dispatchEvent(new Event('storage'));
         
         console.log('Saved new zap to localStorage:', JSON.stringify(newZap, null, 2));
@@ -425,7 +423,7 @@ export default function CreateZap() {
         console.error('Failed to save zap to localStorage:', error);
       }
       
-      // Send to backend for monitoring
+      
       const response = await fetch('/api/zaps', {
         method: 'POST',
         headers: {
@@ -447,38 +445,37 @@ export default function CreateZap() {
       
       if (!response.ok) {
         console.error('Backend error:', result);
-        // Even if backend fails, we've saved the zap to localStorage
-        // so we can still show it in the UI
+        
         console.log('Zap saved to localStorage, but backend save failed. Continuing...');
-        // Return the local zap data as the result
+        
         return { ...newZap, id: zapId };
       }
       
       console.log('Zap saved to backend:', JSON.stringify(result, null, 2));
       
-      // Show success message and redirect to dashboard with a success parameter
+      
       console.log('Zap created and monitoring started successfully!');
       
-      // Store the newly created zap ID in localStorage to highlight it on the dashboard
+      
       if (result?.id) {
         const newZapId = result.id;
-        // Use a small delay to ensure the dashboard has time to initialize
+        
         setTimeout(() => {
           localStorage.setItem('newZapId', newZapId);
         }, 100);
       }
       
-      // Redirect to dashboard with a success parameter
+      
       router.push('/dashboard?zap_created=true');
     } catch (error) {
       console.error('Error creating Zap:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       if (errorMessage.includes('on-chain but failed to start monitoring')) {
-        console.error(errorMessage); // Use console.error for alerts
+        console.error(errorMessage); 
       } else {
-        console.error(`Error: ${errorMessage}`); // Use console.error for alerts
+        console.error(`Error: ${errorMessage}`); 
       }
-      throw error; // Re-throw to be caught by the outer catch
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -525,7 +522,7 @@ export default function CreateZap() {
               onComplete={(workflow) => {
                 console.log('Workflow created:', JSON.stringify(workflow, null, 2));
                 setGoogleWorkflow(workflow);
-                // Show success message and scroll to Create Zap button
+                
                 toast.success('Google Workflow configured! Click "Create Zap" below to create it.');
               }}
               onBack={() => setSelectedTrigger(null)}
@@ -554,7 +551,7 @@ export default function CreateZap() {
                       token: e.target.value,
                       type: triggerData?.type || 'price_above',
                       price: triggerData?.price || 0,
-                      chain: triggerData?.chain || 'ethereum' // ensure chain is set
+                      chain: triggerData?.chain || 'ethereum'
                     })}
                   >
                     <option value="">Select a token</option>
@@ -576,7 +573,7 @@ export default function CreateZap() {
                       type: e.target.value as 'price_above' | 'price_below',
                       token: triggerData?.token || 'WETH',
                       price: triggerData?.price || 0,
-                      chain: triggerData?.chain || 'ethereum' // ensure chain is set
+                      chain: triggerData?.chain || 'ethereum' 
                     })}
                   >
                     <option value="price_above">Price above</option>
@@ -597,9 +594,9 @@ export default function CreateZap() {
                     onChange={(e) => setTriggerData({
                       ...triggerData!,
                       price: parseFloat(e.target.value) || 0,
-                      type: triggerData?.type || 'price_above', // Removed typo 's' from this line
+                      type: triggerData?.type || 'price_above', 
                       token: triggerData?.token || 'WETH',
-                      chain: triggerData?.chain || 'ethereum' // ensure chain is set
+                      chain: triggerData?.chain || 'ethereum' 
                     })}
                     placeholder="Enter target price"
                   />

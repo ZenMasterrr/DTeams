@@ -5,12 +5,12 @@ import { z } from 'zod';
 const prisma = new PrismaClient();
 const router = Router();
 
-// Schema for request validation
+
 const testZapSchema = z.object({
   id: z.string().min(1, 'Zap ID is required'),
 });
 
-// Error handling middleware
+
 const handleError = (error: any, res: Response) => {
   console.error('Error in test-zap:', error);
   const status = error.status || 500;
@@ -18,15 +18,15 @@ const handleError = (error: any, res: Response) => {
   res.status(status).json({ success: false, message });
 };
 
-// Test a zap by ID
+
 router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     
-    // Validate request
+    
     testZapSchema.parse({ id });
 
-    // Get the zap with its trigger and actions
+    
     const zap = await prisma.zap.findUnique({
       where: { id },
       include: {
@@ -44,7 +44,7 @@ router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
       });
     }
 
-    // Create a zap run to track this test execution
+   
     const zapRun = await prisma.zapRun.create({
       data: {
         zapId: zap.id,
@@ -58,7 +58,7 @@ router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
     const actionResults = [];
     let allActionsSucceeded = true;
 
-    // Execute each action
+   
     for (const action of zap.actions) {
       const actionMetadata = action.metadata as Record<string, any>;
       const actionType = actionMetadata?.type || 'UNKNOWN';
@@ -71,7 +71,7 @@ router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
         details: {} as Record<string, any>,
       };
 
-      // Create an action run to track this action
+      
       const actionRun = await prisma.actionRun.create({
         data: {
           actionId: action.id,
@@ -85,7 +85,7 @@ router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
       });
 
       try {
-        // Process the action based on its type
+        
         switch (actionType.toUpperCase()) {
           case 'EMAIL':
             actionResult.message = `Email would be sent to ${actionMetadata.to}`;
@@ -95,7 +95,7 @@ router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
               bodyPreview: actionMetadata.body?.substring(0, 100) + 
                 (actionMetadata.body?.length > 100 ? '...' : ''),
             };
-            console.log(`📧 [TEST] Would send email to: ${actionMetadata.to}`);
+            console.log(` [TEST] Would send email to: ${actionMetadata.to}`);
             break;
             
           case 'WEBHOOK':
@@ -106,7 +106,7 @@ router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
               headers: actionMetadata.headers || {},
               payload: actionMetadata.payload || {},
             };
-            console.log(`🌐 [TEST] Would call webhook: ${actionMetadata.url}`);
+            console.log(` [TEST] Would call webhook: ${actionMetadata.url}`);
             break;
             
           case 'SLACK':
@@ -115,7 +115,7 @@ router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
               channel: actionMetadata.channel,
               message: actionMetadata.message,
             };
-            console.log(`💬 [TEST] Would send Slack message to #${actionMetadata.channel}`);
+            console.log(` [TEST] Would send Slack message to #${actionMetadata.channel}`);
             break;
             
           default:
@@ -123,16 +123,16 @@ router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
             actionResult.message = `Action type '${actionType}' is not implemented yet`;
             actionResult.details = { type: actionType };
             allActionsSucceeded = false;
-            console.warn(`⚠️ [TEST] Unhandled action type: ${actionType}`);
+            console.warn(` [TEST] Unhandled action type: ${actionType}`);
         }
         
-        // Update action run status
+        
         await prisma.actionRun.update({
           where: { id: actionRun.id },
           data: {
             status: actionResult.success ? 'success' : 'failed',
             metadata: {
-              ...(actionRun.metadata as object || {}), // Preserve existing metadata
+              ...(actionRun.metadata as object || {}),
               message: actionResult.message,
               finishedAt: new Date().toISOString(),
               ...actionResult.details
@@ -141,7 +141,7 @@ router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
         });
         
       } catch (error) {
-        console.error(`❌ Error executing action ${action.id}:`, error);
+        console.error(` Error executing action ${action.id}:`, error);
         
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         actionResult.success = false;
@@ -149,13 +149,13 @@ router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
         actionResult.details = { error: String(error) };
         allActionsSucceeded = false;
         
-        // Update action run status to failed
+        
         await prisma.actionRun.update({
           where: { id: actionRun.id },
           data: {
             status: 'failed',
             metadata: {
-              ...(actionRun.metadata as object || {}), // Preserve existing metadata
+              ...(actionRun.metadata as object || {}), 
               message: errorMessage,
               error: String(error),
               finishedAt: new Date().toISOString()
@@ -167,7 +167,7 @@ router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
       actionResults.push(actionResult);
     }
     
-    // Update the zap run status
+   
     const zapRunStatus = allActionsSucceeded ? 'completed' : 'partially_completed';
     await prisma.zapRun.update({
       where: { id: zapRun.id },
@@ -183,7 +183,7 @@ router.post('/:id', async (req: Request, res: Response, next: NextFunction) => {
       },
     });
     
-    // Return the results
+    
     res.json({
       success: true,
       message: `Zap test ${allActionsSucceeded ? 'completed successfully' : 'completed with some errors'}`,

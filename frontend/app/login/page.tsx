@@ -1,7 +1,7 @@
 "use client";
 import { Appbar } from "@/components/Appbar";
 import { CheckFeature } from "@/components/CheckFeature";
-import { PrimaryButton } from "@/components/buttons/PrimaryButton";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
 interface CustomWindow extends Window {
@@ -20,13 +20,13 @@ export default function() {
     }
 
     try {
-      // Request account access
+      
       const accounts = await window.ethereum.request({ 
         method: 'eth_requestAccounts' 
       });
       
       if (accounts.length > 0) {
-        // Successfully connected
+        
         router.push("/dashboard");
       }
     } catch (error) {
@@ -53,7 +53,7 @@ export default function() {
                 </div>
                 <div className="flex-1 pt-6 pb-6 mt-12 px-4 border rounded flex flex-col justify-center items-center">
                     <div className="pt-4">
-                        <PrimaryButton onClick={connectWallet} size="big">Connect Wallet</PrimaryButton>
+                        <Button onClick={connectWallet} size="lg">Connect Wallet</Button>
                     </div>
                 </div>
             </div>

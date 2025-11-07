@@ -8,10 +8,10 @@ declare global {
   }
 }
 
-// Only import in browser environment
+
 const isBrowser = typeof window !== 'undefined';
 
-// Type-safe chain configuration
+
 const appChains = [
   {
     id: 31337,
@@ -34,27 +34,27 @@ const appChains = [
 
 type AppChains = typeof appChains[number]['id'];
 
-// Get the WalletConnect project ID from environment variables
+
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 if (!walletConnectProjectId) {
   console.warn('WalletConnect Project ID is not set. Using default ID which may not work in production.');
 }
 
-// Create transports for all chains
+
 const transports = appChains.reduce((acc, chain) => {
   acc[chain.id] = http();
   return acc;
 }, {} as Record<AppChains, any>);
 
-// Create connectors (only in browser)
+
 const connectors = isBrowser ? [
-  // MetaMask - using the simplest possible configuration
+  
   injected({
     target: 'metaMask',
     shimDisconnect: true,
   }),
   
-  // WalletConnect v2
+  
   walletConnect({
     projectId: walletConnectProjectId || 'default-project-id',
     showQrModal: true,
@@ -70,7 +70,7 @@ const connectors = isBrowser ? [
   })
 ] : [];
 
-// Create the config with proper storage for SSR
+
 const config = createConfig({
   chains: appChains as any,
   transports: {

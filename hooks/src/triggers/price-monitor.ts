@@ -9,15 +9,13 @@ interface PriceData {
   timestamp: Date;
 }
 
-// Cache for last known prices
+
 const priceCache: Record<string, number> = {};
 
-/**
- * Fetch current crypto price from CoinGecko
- */
+
 async function fetchCryptoPrice(symbol: string): Promise<number | null> {
   try {
-    // Convert symbol to CoinGecko ID (e.g., BTC -> bitcoin, ETH -> ethereum)
+    
     const coinMap: Record<string, string> = {
       'BTC': 'bitcoin',
       'ETH': 'ethereum',
@@ -49,9 +47,7 @@ async function fetchCryptoPrice(symbol: string): Promise<number | null> {
   }
 }
 
-/**
- * Check if price condition is met
- */
+
 function checkPriceCondition(
   currentPrice: number,
   targetPrice: number,
@@ -64,12 +60,10 @@ function checkPriceCondition(
   }
 }
 
-/**
- * Monitor price alerts for all active zaps
- */
+
 export async function monitorPriceAlerts() {
   try {
-    // Get all zaps with price triggers
+    
     const priceZaps = await prisma.zap.findMany({
       where: {
         status: 'active',
@@ -84,7 +78,7 @@ export async function monitorPriceAlerts() {
       }
     });
     
-    console.log(`📊 Monitoring ${priceZaps.length} price alert zaps...`);
+    console.log(` Monitoring ${priceZaps.length} price alert zaps...`);
     
     for (const zap of priceZaps) {
       if (!zap.trigger) continue;
@@ -96,39 +90,39 @@ export async function monitorPriceAlerts() {
       const { symbol, targetPrice, condition } = metadata;
       
       if (!symbol || !targetPrice) {
-        console.warn(`⚠️  Skipping zap ${zap.id}: missing symbol or targetPrice`);
+        console.warn(`  Skipping zap ${zap.id}: missing symbol or targetPrice`);
         continue;
       }
       
-      // Fetch current price
+      
       const currentPrice = await fetchCryptoPrice(symbol);
       
       if (currentPrice === null) {
-        console.warn(`⚠️  Could not fetch price for ${symbol}`);
+        console.warn(`  Could not fetch price for ${symbol}`);
         continue;
       }
       
-      // Check if condition is met
+      
       const conditionMet = checkPriceCondition(
         currentPrice,
         parseFloat(targetPrice),
         condition || 'above'
       );
       
-      // Check if this is a new trigger (price crossed threshold)
+      
       const lastPrice = priceCache[`${zap.id}-${symbol}`];
       const isNewTrigger = lastPrice && (
         (condition === 'above' && lastPrice <= targetPrice && currentPrice > targetPrice) ||
         (condition === 'below' && lastPrice >= targetPrice && currentPrice < targetPrice)
       );
       
-      // Update cache
+      
       priceCache[`${zap.id}-${symbol}`] = currentPrice;
       
       if (conditionMet && (!lastPrice || isNewTrigger)) {
-        console.log(`🚨 Price alert triggered! ${symbol} is ${condition} $${targetPrice} (current: $${currentPrice})`);
+        console.log(` Price alert triggered! ${symbol} is ${condition} $${targetPrice} (current: $${currentPrice})`);
         
-        // Trigger the zap
+        
         await executeZap(zap.id, {
           price: currentPrice,
           symbol,
@@ -144,9 +138,7 @@ export async function monitorPriceAlerts() {
   }
 }
 
-/**
- * Execute a zap (call the test-zap endpoint)
- */
+
 async function executeZap(zapId: string, triggerData: any) {
   try {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -159,9 +151,9 @@ async function executeZap(zapId: string, triggerData: any) {
       { timeout: 30000 }
     );
     
-    console.log(`✅ Zap ${zapId} executed successfully:`, response.data);
+    console.log(` Zap ${zapId} executed successfully:`, response.data);
     
   } catch (error) {
-    console.error(`❌ Error executing zap ${zapId}:`, error instanceof Error ? error.message : error);
+    console.error(` Error executing zap ${zapId}:`, error instanceof Error ? error.message : error);
   }
 }

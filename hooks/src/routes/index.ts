@@ -6,7 +6,7 @@ import webhookRouter from './webhook.routes';
 
 const router = Router();
 
-// API routes
+
 router.use('/auth', authRouter);
 router.use('/zaps', zapRouter);
 router.use('/test-zap', testZapRouter);

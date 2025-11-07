@@ -26,7 +26,7 @@ const EmailActionForm: React.FC<EmailActionFormProps> = ({ onAddAction, onCancel
       body,
     };
     onAddAction(action);
-    // Clear the form after submission
+    
     setTo('');
     setSubject('');
     setBody('');

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Get the hooks service URL from environment variables or use default
+
 const HOOKS_URL = process.env.HOOKS_URL || 'http://localhost:3002';
 
-// Helper function to check if a URL is reachable
+
 async function isServiceReachable(url: string): Promise<boolean> {
   try {
     const response = await fetch(url, { method: 'HEAD' });
@@ -14,7 +14,7 @@ async function isServiceReachable(url: string): Promise<boolean> {
   }
 }
 
-// Mock response for development
+
 function getMockResponse(body: any) {
   const triggerType = body.trigger?.type || 'unknown';
   const actionTypes = body.actions?.map((a: any) => a.type).join('+') || 'none';
@@ -31,14 +31,13 @@ function getMockResponse(body: any) {
     updatedAt: new Date().toISOString()
   };
   
-  // Store the zap in our mock database (if needed, can be added later)
-  // Note: Mock zap storage can be implemented here if needed for testing
+  
   
   return {
     success: true,
     data: {
       ...mockZap,
-      testUrl: `/api/test-zap/${zapId}` // Add a test URL
+      testUrl: `/api/test-zap/${zapId}` 
     },
     message: 'Zap created successfully (mock response)'
   };
@@ -48,10 +47,10 @@ export async function POST(req: NextRequest) {
   console.log('🔵 Received request to create zap');
   
   try {
-    // Get the authorization header
+    
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
-      console.error('❌ Authorization header is missing');
+      console.error(' Authorization header is missing');
       return NextResponse.json(
         { 
           success: false,
@@ -62,14 +61,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Read and parse the request body
+   
     let body;
     try {
       body = await req.json();
-      console.log('📦 Request body:', JSON.stringify(body, null, 2));
+      console.log(' Request body:', JSON.stringify(body, null, 2));
     } catch (e) {
       const error = e as Error;
-      console.error('❌ Failed to parse request body:', error);
+      console.error(' Failed to parse request body:', error);
       return NextResponse.json(
         { 
           success: false,
@@ -80,7 +79,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if hooks service is reachable
+    
     const isHooksServiceReachable = await isServiceReachable(HOOKS_URL);
     
     if (!isHooksServiceReachable) {
@@ -88,9 +87,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(getMockResponse(body));
     }
 
-    // Forward the request to the hooks service
+    
     const hooksEndpoint = `${HOOKS_URL}/api/v1/zap`;
-    console.log(`🔄 Forwarding request to ${hooksEndpoint}`);
+    console.log(` Forwarding request to ${hooksEndpoint}`);
     
     try {
       const response = await fetch(hooksEndpoint, {
@@ -102,29 +101,29 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify(body)
       });
 
-      // Get response text first to handle both JSON and non-JSON responses
+      
       const responseText = await response.text();
       let responseData;
       
       try {
         responseData = responseText ? JSON.parse(responseText) : {};
       } catch (e) {
-        console.error('❌ Failed to parse hooks service response:', e);
-        console.warn('⚠️ Using mock response due to parsing error');
+        console.error(' Failed to parse hooks service response:', e);
+        console.warn(' Using mock response due to parsing error');
         return NextResponse.json(getMockResponse(body));
       }
 
       if (!response.ok) {
-        console.error('❌ Hooks service error:', {
+        console.error(' Hooks service error:', {
           status: response.status,
           statusText: response.statusText,
           body: responseData,
           endpoint: hooksEndpoint
         });
         
-        // If the endpoint is not found, try the root endpoint as fallback
+        
         if (response.status === 404 && hooksEndpoint.endsWith('/api/v1/zap')) {
-          console.log('🔄 Trying fallback endpoint: /api/v1/zaps');
+          console.log(' Trying fallback endpoint: /api/v1/zaps');
           return NextResponse.json(getMockResponse(body));
         }
         
@@ -148,9 +147,9 @@ export async function POST(req: NextRequest) {
 
     } catch (error) {
       const err = error as Error;
-      console.error('❌ Error forwarding request to hooks service:', err);
+      console.error(' Error forwarding request to hooks service:', err);
       
-      // Check for connection errors
+      
       if (err.message.includes('fetch failed') || err.message.includes('ECONNREFUSED')) {
         return NextResponse.json(
           { 
@@ -175,7 +174,7 @@ export async function POST(req: NextRequest) {
     }
   } catch (error) {
     const err = error as Error;
-    console.error('❌ Unexpected error in /api/zaps:', err);
+    console.error(' Unexpected error in /api/zaps:', err);
     return NextResponse.json(
       { 
         success: false,

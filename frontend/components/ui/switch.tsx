@@ -4,7 +4,7 @@ import * as React from 'react'
 import * as SwitchPrimitives from '@radix-ui/react-switch'
 import { cn } from '@/lib/utils'
 
-// Create a simple switch component without using Radix UI primitives directly
+
 const Switch = React.forwardRef<HTMLButtonElement, {
   checked?: boolean
   onCheckedChange?: (checked: boolean) => void
