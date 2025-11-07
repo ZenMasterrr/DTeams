@@ -3,10 +3,11 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, Wallet, Database } from "lucide-react";
 import Link from "next/link";
 import { ZapList } from "@/components/ZapList";
 import { toast } from "sonner";
+import { ethers } from "ethers";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -15,6 +16,9 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [googleConnected, setGoogleConnected] = useState(false);
+  const [walletConnected, setWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string>('');
+  const [selectedMode, setSelectedMode] = useState<'centralized' | 'decentralized'>('centralized');
 
   const handleZapCreated = useCallback(() => {
     setRefreshKey(prev => prev + 1);
@@ -61,12 +65,63 @@ export default function Dashboard() {
       window.history.replaceState({}, document.title, '/dashboard');
     }
 
+    // Check for zap creation success
+    if (params.get('zap_created') === 'true') {
+      const zapId = params.get('zap_id');
+      toast.success(`🎉 Decentralized Zap #${zapId} created successfully on blockchain!`);
+      // Refresh zap list
+      setRefreshKey(prev => prev + 1);
+      // Clean up URL
+      window.history.replaceState({}, document.title, '/dashboard');
+    }
+
     // Check if Google is already connected
     const googleConnectedStatus = localStorage.getItem('google_connected');
     if (googleConnectedStatus === 'true') {
       setGoogleConnected(true);
     }
+
+    // Check if wallet is connected
+    checkWalletConnection();
   }, [router]);
+
+  const checkWalletConnection = async () => {
+    if (typeof window.ethereum !== 'undefined') {
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.listAccounts();
+        if (accounts.length > 0) {
+          setWalletAddress(accounts[0].address);
+          setWalletConnected(true);
+        }
+      } catch (error) {
+        console.error('Error checking wallet:', error);
+      }
+    }
+  };
+
+  const connectWallet = async () => {
+    if (typeof window.ethereum === 'undefined') {
+      toast.error('Please install MetaMask!');
+      window.open('https://metamask.io/', '_blank');
+      return;
+    }
+
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      const signer = await provider.getSigner();
+      const address = await signer.getAddress();
+      
+      setWalletAddress(address);
+      setWalletConnected(true);
+      setSelectedMode('decentralized');
+      toast.success(`Wallet connected: ${address.slice(0, 6)}...${address.slice(-4)}`);
+    } catch (error: any) {
+      toast.error('Failed to connect wallet');
+      console.error('Wallet connection error:', error);
+    }
+  };
 
   if (!isClient) {
     return (
@@ -78,8 +133,89 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
+        <p className="text-gray-600">Manage your automated workflows - choose centralized or decentralized mode</p>
+      </div>
+
+      {/* Mode Selection Pills */}
+      <div className="flex gap-4 mb-6">
+        <button
+          onClick={() => setSelectedMode('centralized')}
+          className={`flex-1 py-4 px-6 rounded-xl font-semibold transition-all ${
+            selectedMode === 'centralized'
+              ? 'bg-blue-600 text-white shadow-lg scale-105'
+              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+          }`}
+        >
+          🏢 Centralized (Free)
+        </button>
+        <button
+          onClick={() => setSelectedMode('decentralized')}
+          className={`flex-1 py-4 px-6 rounded-xl font-semibold transition-all ${
+            selectedMode === 'decentralized'
+              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg scale-105'
+              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+          }`}
+        >
+          🔗 Decentralized (Web3)
+        </button>
+      </div>
+
+      {/* Web3 Wallet Connection Banner */}
+      {selectedMode === 'decentralized' && !walletConnected && (
+        <Card className="mb-6 border-purple-200 bg-purple-50">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="bg-purple-100 p-2 rounded-full">
+                  <Wallet className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-purple-900">Connect Web3 Wallet</h3>
+                  <p className="text-sm text-purple-700">
+                    Connect MetaMask to create decentralized zaps as NFTs on blockchain
+                  </p>
+                </div>
+              </div>
+              <Button onClick={connectWallet} className="bg-purple-600 hover:bg-purple-700">
+                <Wallet className="mr-2 h-4 w-4" />
+                Connect Wallet
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Wallet Connected Banner */}
+      {selectedMode === 'decentralized' && walletConnected && (
+        <Card className="mb-6 border-green-200 bg-green-50">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="bg-green-100 p-2 rounded-full">
+                  <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-green-900">Wallet Connected</h3>
+                  <p className="text-sm text-green-700">
+                    {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)} - Ready for decentralized zaps
+                  </p>
+                </div>
+              </div>
+              <Button onClick={connectWallet} variant="outline" className="border-green-300 text-green-700 hover:bg-green-100">
+                Reconnect
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Google Account Connection Banner */}
-      {!googleConnected ? (
+      {selectedMode === 'centralized' && !googleConnected ? (
         <Card className="mb-6 border-blue-200 bg-blue-50">
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
@@ -105,7 +241,7 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-      ) : (
+      ) : selectedMode === 'centralized' && googleConnected ? (
         <Card className="mb-6 border-green-200 bg-green-50">
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
@@ -128,17 +264,30 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Your Zaps</h1>
-          <p className="text-gray-600">Manage your automated workflows</p>
-        </div>
-        <Link href="/create-zap">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create New Zap
+      {/* Action Buttons */}
+      <div className="flex gap-4 mb-8">
+        {selectedMode === 'centralized' ? (
+          <Link href="/create-zap" className="flex-1">
+            <Button className="w-full h-full py-6 bg-blue-600 hover:bg-blue-700">
+              <Plus className="mr-2 h-5 w-5" />
+              Create Centralized Zap
+            </Button>
+          </Link>
+        ) : (
+          <Link href="/create-zap-web3" className="flex-1">
+            <Button className="w-full h-full py-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
+              <Plus className="mr-2 h-5 w-5" />
+              Create Decentralized Zap
+            </Button>
+          </Link>
+        )}
+        
+        <Link href="/register-zaps" className="flex-1">
+          <Button variant="outline" className="w-full h-full py-6 border-2 hover:bg-gray-50">
+            <Database className="mr-2 h-5 w-5" />
+            Register Existing Zaps
           </Button>
         </Link>
       </div>
